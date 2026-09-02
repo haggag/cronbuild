@@ -2,21 +2,21 @@
 **Product:** CronBuild.com
 **Version:** 1.0 (MVP)
 **Stack:** React 19+ (Vite), Tailwind CSS, TypeScript, Lucide Icons
-**Hosting** Cloudflare Pages 
+**Hosting:** Cloudflare Pages (100% Client-Side Static Single-Page App)
 **Libraries:** `cronstrue` (human-readable output), `cron-parser` (execution forecast)
-**Architecture:** 100% client-side — zero backend, zero tracking, privacy-first
+**Architecture:** 100% client-side — zero backend, zero external API keys, zero tracking, privacy-first
 
 ---
 
 ## 1. Overview
 
-CronBuild is a visual cron expression builder and interpreter that runs entirely in the browser. It targets developers who need to construct, validate, and export cron schedules without memorizing syntax. The tool differentiates itself through an interactive tokenized pill bar, a 24h × 7d visual timeline, and instant CI/CD export snippets — all in a polished, dark-mode-first interface.
+CronBuild is an ultra-fast, client-side visual cron expression builder and real-time interpreter. It runs entirely in the browser with zero backend dependencies, targeting developers and DevOps engineers who need to construct, validate, and export cron schedules without memorizing syntax. The tool features an interactive tokenized pill bar, a 24h × 7d visual heatmap timeline, instant CI/CD and AI developer export snippets, and native `llms.txt` deep-linking support — all wrapped in a polished, dark-mode-first interface.
 
 ---
 
 ## 2. GUI Layout
 
-Single-screen workspace. No routing, no pages — everything is visible and interactive at once.
+Single-screen responsive workspace. No routing, no page reloads — everything is visible and interactive at once.
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -42,9 +42,9 @@ Single-screen workspace. No routing, no pages — everything is visible and inte
 │      Quick: [Weekdays] [Weekends] [Clear]                            │
 │  (○) Interval: Every [2] days starting [Tuesday]                     │
 ├──────────────────────────────────────────────────────────────────────┤
-│  VISUAL TIMELINE (24h × 7d)          │  EXPORT SNIPPETS              │
+│  VISUAL TIMELINE (24h × 7d)          │  DEVELOPER & AI EXPORTS       │
 │  ┌──────────────────────────────┐    │  Tabs: [crontab] [GH Actions] │
-│  │  Heatmap / dot grid showing │    │        [Kubernetes]            │
+│  │  Heatmap / dot grid showing │    │        [Kubernetes] [AI Prompt]│
 │  │  when the cron expression   │    │  ┌──────────────────────────┐  │
 │  │  fires across the week      │    │  │ schedule:                │  │
 │  └──────────────────────────────┘    │  │   - cron: '*/15 …'      │  │
@@ -65,12 +65,12 @@ Single-screen workspace. No routing, no pages — everything is visible and inte
 
 ## 3. UX Principles
 
-1. **Dark mode default.** Light mode available via toggle. Developer tools should feel native to terminal/IDE workflows.
-2. **Animated pill transitions.** When a pill value changes, the old value fades out and the new value slides in. CSS transitions only — no animation libraries.
-3. **Change diff flash.** When a field changes, its pill briefly pulses with an accent glow to draw attention to what changed.
+1. **Dark mode default.** Light mode available via toggle. Developer tools should feel native to modern IDE/terminal workflows.
+2. **Animated pill transitions.** When a pill value changes, the old value fades out and the new value slides in smoothly. CSS transitions only — no heavy animation libraries.
+3. **Change diff flash.** When a field changes, its pill briefly pulses with an accent glow to clearly highlight what changed.
 4. **Toast feedback.** Every copy action triggers a brief "Copied!" toast notification (auto-dismiss after 2s). No silent clipboard writes.
-5. **Inline validation.** Invalid tokens turn the affected pill amber/red with a tooltip error (e.g., "Minute must be 0–59"). The rest of the UI remains interactive.
-6. **Bi-directional sync.** GUI → raw string and raw string → GUI are always in lockstep. Editing either side instantly updates the other, the human summary, the timeline, the next-5-runs list, and the URL hash.
+5. **Inline validation.** Invalid tokens turn the affected pill amber/red with an actionable tooltip error (e.g., "Minute must be 0–59"). The rest of the UI remains interactive.
+6. **Bi-directional sync.** GUI $\leftrightarrow$ raw string are always in lockstep. Editing either side instantly synchronizes the other, the human summary, the 24h×7d timeline, the next runs forecast, and the URL hash.
 
 ---
 
@@ -92,52 +92,59 @@ Each of the 5 fields gets a dedicated tab panel with these modes:
 
 ### 4.3 Preset Dropdown
 A searchable dropdown (triggered by button click or `Cmd+K` / `Ctrl+K` keyboard shortcut) containing common real-world schedules:
+- **Common:** Every minute, Every 5 minutes, Every 15 minutes, Hourly, Daily at midnight, Weekly on Sunday at 3 AM.
+- **Business:** Weekdays at 9 AM, Twice daily (noon & midnight), First of every month, Quarterly (Jan/Apr/Jul/Oct 1st).
 
-- **Common:** Every minute, Every 5 minutes, Every 15 minutes, Hourly, Daily at midnight, Weekly on Sunday at 3 AM
-- **Business:** Weekdays at 9 AM, Twice daily (noon & midnight), First of every month, Quarterly (Jan/Apr/Jul/Oct 1st)
+Selecting a preset populates the raw input, syncs the GUI, and updates the URL hash.
 
-Selecting a preset closes the dropdown, populates the raw input, syncs the GUI, and updates the URL hash.
-
-### 4.4 Visual Timeline (24h × 7d)
-A compact heatmap grid: 7 rows (Mon–Sun) × 24 columns (00–23). Cells where the cron fires are filled with the accent color; inactive cells are dim. This gives an instant visual fingerprint of the schedule's coverage.
-
-Implementation: a simple `<div>` grid. Each cell is a small square. Color is toggled based on whether `cron-parser` produces a hit in that hour/day slot. No canvas, no charting library.
+### 4.4 Visual Timeline (24h × 7d Heatmap)
+A compact heatmap grid: 7 rows (Mon–Sun) × 24 columns (00–23). Cells where the cron fires are highlighted with the accent color; inactive cells are dimmed.
+- **Implementation:** Simple lightweight `<div>` grid. Cell active state is computed client-side via `cron-parser`. Zero charting libraries.
 
 ### 4.5 Execution Forecast
-Display the next 5 execution timestamps computed by `cron-parser`. Each timestamp shows:
-- Formatted date/time in the selected timezone (Local or UTC)
-- Static relative label (e.g., "in 42 min") — computed once when the expression changes, not live-ticking
+Displays the next 5 execution timestamps computed by `cron-parser`.
+- Formatted date/time in the selected timezone (Local or UTC).
+- Static relative label (e.g., "in 42 min") — computed on expression change, not live-ticking.
+- Timezone is auto-detected via `Intl.DateTimeFormat().resolvedOptions().timeZone` with a toggle to switch to UTC.
 
-Timezone is auto-detected via `Intl.DateTimeFormat().resolvedOptions().timeZone` with a toggle to switch to UTC.
+### 4.6 Developer & AI Export Snippets
+Four tabbed code blocks with syntax highlighting and instant "Copy" buttons:
 
-### 4.6 Developer Export Snippets
-Three tabbed code blocks with syntax highlighting and a "Copy" button each:
-
-**Linux crontab:**
-```
-*/15 09-17 * * 1-5 /path/to/script.sh
-```
-
-**GitHub Actions:**
-```yaml
-on:
-  schedule:
-    - cron: '*/15 09-17 * * 1-5'
-```
-
-**Kubernetes CronJob:**
-```yaml
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: scheduled-job
-spec:
-  schedule: "*/15 09-17 * * 1-5"
-```
+1. **Linux crontab:**
+   ```
+   */15 09-17 * * 1-5 /path/to/script.sh
+   ```
+2. **GitHub Actions:**
+   ```yaml
+   on:
+     schedule:
+       - cron: '*/15 09-17 * * 1-5'
+   ```
+3. **Kubernetes CronJob:**
+   ```yaml
+   apiVersion: batch/v1
+   kind: CronJob
+   metadata:
+     name: scheduled-job
+   spec:
+     schedule: "*/15 09-17 * * 1-5"
+   ```
+4. **AI Prompt Context (for Cursor / Claude / ChatGPT / Copilot):**
+   ```text
+   Implement a background task in [language/framework] running on this schedule:
+   - Cron Expression: `*/15 09-17 * * 1-5`
+   - Description: Every 15 minutes, between 09:00 AM and 05:59 PM, Monday through Friday
+   - Timezone: Asia/Riyadh (Next run: 2026-09-02 09:00:00)
+   Requirements: Ensure idempotency, timezone safety, and proper graceful shutdown handling.
+   ```
 
 ### 4.7 Sharing & History
-- **URL hash sharing:** Expression state is encoded in the URL hash (e.g., `#*/15_09-17_*_*_1-5`). Loading this URL restores the full state. The "Share URL" button copies this link.
-- **Recent expressions:** The last 10 valid expressions are auto-saved to `localStorage` and displayed as clickable chips at the bottom of the page. Clicking a chip restores that expression.
+- **URL Hash Sharing:** Full expression state is encoded in the URL hash (e.g., `#*/15_09-17_*_*_1-5`). Opening this link restores the exact state without server dependencies.
+- **Recent Expressions:** The last 10 valid expressions are auto-saved to `localStorage` and displayed as clickable chips.
+
+### 4.8 AI Ecosystem Integration (`llms.txt`)
+- **Static `/llms.txt` Spec:** Serves a standard `/llms.txt` file on Cloudflare Pages documenting CronBuild's URL schema (`https://cronbuild.com/#<minute>_<hour>_<dom>_<month>_<dow>`).
+- **AI Agent Deep-Linking:** Enables AI coding assistants (ChatGPT, Claude, Cursor, Copilot) to generate direct, verifiable preview links for users when authoring cron schedules in code.
 
 ---
 
@@ -145,23 +152,25 @@ spec:
 
 | Area | MVP (v1.0) | Post-MVP (v2.0+) |
 |:---|:---|:---|
-| Cron syntax | 5-field POSIX | 6-field (seconds), 7-field (years) |
-| Input | GUI + raw input + preset dropdown | Freeform natural language input |
-| Exports | crontab, GitHub Actions, Kubernetes | AWS EventBridge, systemd timers, `.ics` |
-| Persistence | URL hash + `localStorage` | Cloud sync, accounts, teams |
-| Forecast | Next 5 runs (client-side) | Webhook monitoring, alerting |
-| Visualization | 24h×7d timeline heatmap | 30-day histogram, calendar overlay |
-| Compare | — | Side-by-side expression diff |
-| Accessibility | Keyboard navigation + semantic HTML | Full WCAG 2.1 AA audit |
-| PWA | — | Service worker, offline support |
+| **Cron Syntax** | 5-field POSIX (`* * * * *`) | 6-field (seconds), 7-field (years) |
+| **Input Methods** | GUI + Raw Input + Preset Dropdown | Freeform natural language input |
+| **AI Integration** | "Copy for AI" context snippets + `llms.txt` spec (Zero backend) | On-device browser AI (`window.ai` / Gemini Nano), WebGPU offline models |
+| **Exports** | Crontab, GitHub Actions, Kubernetes, AI Prompt | AWS EventBridge, systemd timers, `.ics` |
+| **Persistence** | URL hash + `localStorage` | Cloud sync, team presets |
+| **Forecast** | Next 5 runs (client-side) | Webhook test monitor, live execution alerts |
+| **Visualization** | 24h×7d heatmap timeline | 30-day run frequency histogram, calendar view |
+| **Compare** | — | Side-by-side visual expression diff |
+| **Accessibility** | Keyboard navigation + semantic HTML | Full WCAG 2.1 AA audit |
+| **PWA** | — | Service worker, offline install |
 
 ---
 
 ## 6. Acceptance Criteria
 
-1. **Bi-directional sync:** Changing any GUI control updates the raw string, human summary, timeline, next runs, and URL hash within one render cycle. Editing the raw string syncs all GUI controls. No cursor jumps in the text input.
-2. **Validation:** Entering `80 * * * *` or `* * * 13 *` highlights the offending pill in red with a field-specific error message. The app does not crash or blank out.
-3. **Preset loading:** Selecting any preset from the dropdown populates all fields, updates the timeline, and shows the correct next 5 runs.
-4. **Stateless restore:** Navigating to `cronbuild.com/#0_2_*_*_1-5` in an incognito window correctly restores the expression `0 2 * * 1-5` with all pills, builder, timeline, and forecast reflecting that schedule.
-5. **Export accuracy:** Each of the 3 export snippets contains the exact current cron expression in the correct format for its target platform. Copy buttons write to clipboard and show a toast.
-6. **Timeline accuracy:** The 24h×7d heatmap correctly lights up only the cells where the current expression would fire.
+1. **Bi-directional Sync:** Changing any GUI control updates the raw string, human summary, timeline, next runs, and URL hash within one render cycle. Editing the raw string syncs all GUI controls without cursor jumps.
+2. **Validation:** Entering invalid expressions (e.g., `80 * * * *` or `* * * 13 *`) highlights the affected pill in red with an actionable field-specific error message.
+3. **Preset Loading:** Selecting any preset populates all fields, updates the timeline, and refreshes next runs.
+4. **Stateless Restore:** Navigating to `cronbuild.com/#0_2_*_*_1-5` in an incognito window faithfully restores all 5 fields and active tokens.
+5. **Export & AI Prompt Accuracy:** All 4 export tabs (crontab, GitHub Actions, Kubernetes, AI Prompt) accurately reflect the active cron expression. Copy buttons trigger clipboard writes and display a "Copied!" toast.
+6. **Timeline Accuracy:** The 24h×7d heatmap lights up only the specific day/hour slots matching the active cron expression.
+7. **AI Agent Spec (`llms.txt`):** The repository includes a static `public/llms.txt` accurately documenting the URL deep-linking structure for AI coding agents.
