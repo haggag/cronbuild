@@ -1,7 +1,8 @@
 # Business Requirements Document (BRD)
 **Product:** CronBuild.com
 **Version:** 1.0 (MVP)
-**Stack:** React 18+ (Vite), Tailwind CSS, Lucide Icons
+**Stack:** React 19+ (Vite), Tailwind CSS, TypeScript, Lucide Icons
+**Hosting** Cloudflare Pages 
 **Libraries:** `cronstrue` (human-readable output), `cron-parser` (execution forecast)
 **Architecture:** 100% client-side — zero backend, zero tracking, privacy-first
 
