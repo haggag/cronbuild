@@ -1,252 +1,166 @@
 # Business Requirements Document (BRD)
-**Product:** CronBuild.com  
-**Document Version:** 1.0 (Streamlined MVP)  
-**Target Stack:** React 18+ (Vite), Tailwind CSS, Lucide Icons  
-**Core Client Libraries:** `cronstrue` (human interpretation), `cron-parser` (next execution dates)  
-**Execution Model:** 100% Client-Side (Zero-Backend, Serverless, Privacy-First)
+**Product:** CronBuild.com
+**Version:** 1.0 (MVP)
+**Stack:** React 18+ (Vite), Tailwind CSS, Lucide Icons
+**Libraries:** `cronstrue` (human-readable output), `cron-parser` (execution forecast)
+**Architecture:** 100% client-side — zero backend, zero tracking, privacy-first
 
 ---
 
-## 1. Executive Summary & Strategic Value Proposition
+## 1. Overview
 
-CronBuild is a fast, lightweight, client-side visual cron expression generator and real-time interpreter. While conventional web-based cron generators are often cluttered, visually dated, or reliant on complex server-side scripts, CronBuild delivers an ultra-responsive, modern developer experience.
-
-### 1.1 Strategic MVP Scope Pruning
-To ensure rapid, deterministic, and bug-free implementation (especially when generating code via an LLM), key architectural optimizations have been made:
-* **Fuzzy Preset Command Palette over Heuristic NLP:** Brittle client-side natural language regex parsers routinely fail on syntactic edge cases. CronBuild replaces ad-hoc NLP with a robust `Cmd+K` command palette containing pre-indexed, searchable real-world presets ("Every weekday at 9 AM", "Every 15 minutes during trading hours"). This satisfies user intent with 100% syntactic precision.
-* **Pruning Low-Utility Gimmicks:** Removed reverse calendar pickers (algorithmically divergent for complex recurrences), `.ics` exports (cron jobs represent indefinite recurring processes rather than finite calendar appointments), and service worker PWA overhead for v1.
-* **High-Leverage Developer Exporters:** Added instant copy-ready deployment snippets for **crontab**, **GitHub Actions**, and **Kubernetes CronJob** to maximize developer productivity.
+CronBuild is a visual cron expression builder and interpreter that runs entirely in the browser. It targets developers who need to construct, validate, and export cron schedules without memorizing syntax. The tool differentiates itself through an interactive tokenized pill bar, a 24h × 7d visual timeline, and instant CI/CD export snippets — all in a polished, dark-mode-first interface.
 
 ---
 
-## 2. Interactive GUI & UX Architecture
+## 2. GUI Layout
 
-The application layout is structured as a unified, single-screen responsive workspace centered around an interactive **Tokenized Cron Pill Bar**.
-
-### 2.1 Visual Workspace Wireframe
+Single-screen workspace. No routing, no pages — everything is visible and interactive at once.
 
 ```text
-+-----------------------------------------------------------------------------------+
-|  [Logo] CronBuild.com                       [ 🔍 Search Presets (Cmd+K) ]  [Theme] |
-+-----------------------------------------------------------------------------------+
-|                                                                                   |
-|   TOKENIZED CRON BAR (Click any pill to open its builder tab):                     |
-|   +-----------+ +-----------+ +-----------+ +-----------+ +-----------+           |
-|   |  MINUTE   | |   HOUR    | |   D-O-M   | |   MONTH   | |   D-O-W   |   [Copy]  |
-|   |    */15   | |   09-17   | |     *     | |     *     | |    1-5    |           |
-|   +-----------+ +-----------+ +-----------+ +-----------+ +-----------+           |
-|                                                                                   |
-|   RAW CRON INPUT: [ */15 09-17 * * 1-5                                   ] [📋]   |
-|   NATURAL SUMMARY: "Every 15 minutes, between 09:00 AM and 05:59 PM,              |
-|                    Monday through Friday"                                         |
-+-----------------------------------------------------------------------------------+
-|  BUILDER TABS: [Minute] [Hour] [Day of Month] [Month] [Day of Week*]              |
-|  -------------------------------------------------------------------------------  |
-|  (Active Tab: Day of Week)                                                        |
-|  ( ) Every day (*)                                                                |
-|  (•) Specific days of the week:                                                   |
-|      [ ] Sun  [x] Mon  [x] Tue  [x] Wed  [x] Thu  [x] Fri  [ ] Sat                |
-|      Quick actions: [Select Weekdays] [Select Weekends] [Clear]                   |
-|  ( ) Interval: Every [ 2 ] days starting on [ Tuesday ]                           |
-+-----------------------------------------------------------------------------------+
-|  NEXT 5 SCHEDULED RUNS (Local / UTC)        |  CI/CD & DEPLOYMENT SNIPPETS         |
-|  Timezone: (•) Local [Asia/Riyadh] ( ) UTC |  Tabs: [Crontab] [GitHub Actions][K8s]|
-|                                            |  -----------------------------------  |
-|  1. 2026-09-02 09:00:00 (in 1h 01m)        |  schedule:                            |
-|  2. 2026-09-02 09:15:00                    |    - cron: '*/15 09-17 * * 1-5'       |
-|  3. 2026-09-02 09:30:00                    |                                       |
-|  4. 2026-09-02 09:45:00                    |  [Copy Snippet]  [Share URL 🔗]       |
-|  5. 2026-09-02 10:00:00                    |                                       |
-+-----------------------------------------------------------------------------------+
-|  RECENT & PINNED EXPRESSIONS:                                                     |
-|  [⭐ */15 09-17 * * 1-5]  [0 0 * * * - Midnight]  [0 2 * * 0 - Weekly Backup]     |
-+-----------------------------------------------------------------------------------+
-```
-
-### 2.2 Key UX Innovations
-1. **Interactive Tokenized Pills:** The 5 POSIX fields (Minute, Hour, Day of Month, Month, Day of Week) are rendered as individual clickable badge tokens. Clicking any token immediately activates its dedicated configuration panel.
-2. **Synchronous Bi-Directional Mirror:**
-   - Modifying checkboxes, radios, or range sliders in the GUI instantly recalculates the raw string, updates the URL hash, and refreshes the human summary.
-   - Typing or pasting directly into the raw text box instantly deconstructs the string, validates syntax, and adjusts the active GUI controls.
-3. **Inline Syntax Guidance:** If an invalid token or out-of-range value is entered (e.g., `65` in the minute field), the affected pill turns amber/red with an actionable error message (`Minute must be between 0 and 59`).
-
----
-
-## 3. Functional Requirements
-
-### 3.1 POSIX Expression Engine & Tokenizer
-* Supports standard 5-part POSIX cron syntax:
-  ```
-  ┌───────────── minute (0 - 59)
-  │ ┌───────────── hour (0 - 23)
-  │ │ ┌───────────── day of the month (1 - 31)
-  │ │ │ ┌───────────── month (1 - 12 or JAN - DEC)
-  │ │ │ │ ┌───────────── day of the week (0 - 6 or SUN - SAT)
-  │ │ │ │ │
-  * * * * *
-  ```
-* Standard operator support:
-  * Asterisk (`*`) — Any value
-  * Comma (`,`) — Value list separator (`1,3,5`)
-  * Hyphen (`-`) — Range of values (`9-17`)
-  * Slash (`/`) — Step values (`*/15`, `1-5/2`)
-
-### 3.2 Visual Field Builders
-Each field is managed through an intuitive, accessible tab panel:
-* **Minute (0–59):**
-  * Mode A: Every minute (`*`)
-  * Mode B: Every `N` minutes starting from minute `X` (`X/N`)
-  * Mode C: Specific selection via a compact 10x6 multi-select grid
-* **Hour (0–23):**
-  * Mode A: Every hour (`*`)
-  * Mode B: Every `N` hours starting from `X` (`X/N`)
-  * Mode C: Specific selection (24-hour visual picker with AM/PM indicators)
-* **Day of Month (1–31):**
-  * Mode A: Every day (`*`)
-  * Mode B: Specific dates (1–31 calendar number matrix)
-  * Mode C: Every `N` days starting on day `X`
-* **Month (1–12):**
-  * Mode A: Every month (`*`)
-  * Mode B: Specific months (12 interactive pill toggles: Jan–Dec)
-* **Day of Week (0–6):**
-  * Mode A: Every day (`*`)
-  * Mode B: Weekday shortcuts ([Weekdays: Mon-Fri], [Weekends: Sat-Sun])
-  * Mode C: Individual day checkboxes (Sunday through Saturday)
-
-### 3.3 Preset Command Palette (`Cmd+K` / `Ctrl+K`)
-* Instant modal overlay featuring fuzzy-filtered real-world templates:
-  * **System Operations:** "Run every minute", "Hourly on the hour", "Daily at midnight", "Every Sunday at 03:00 AM"
-  * **DevOps & Batch:** "Every 5 minutes", "Weekdays at 09:00 AM", "Twice a day (12 PM, 12 AM)", "First day of every month at midnight"
-* Selecting a preset closes the modal, populates the raw input, updates the GUI, and pushes the new state to the URL hash.
-
-### 3.4 Execution Forecast & Timezone Engine
-* Utilizes `cron-parser` to calculate the next 5 execution timestamps on the client side.
-* **Timezone Toggle:**
-  * Local Time (detected via `Intl.DateTimeFormat().resolvedOptions().timeZone`)
-  * Coordinated Universal Time (UTC)
-* **Relative Countdown Badge:** Next upcoming run includes a live humanized countdown badge (e.g., `in 42 minutes`).
-
-### 3.5 Developer Export Snippets
-Pre-configured, syntax-highlighted tabs for rapid copy-pasting into project infrastructure:
-* **Linux crontab:**  
-  `*/15 09-17 * * 1-5 /path/to/script.sh`
-* **GitHub Actions Workflow:**
-  ```yaml
-  on:
-    schedule:
-      - cron: '*/15 09-17 * * 1-5'
-  ```
-* **Kubernetes CronJob Spec:**
-  ```yaml
-  apiVersion: batch/v1
-  kind: CronJob
-  metadata:
-    name: scheduled-job
-  spec:
-    schedule: "*/15 09-17 * * 1-5"
-  ```
-* **AWS EventBridge / CloudWatch:**  
-  Generates standard cron target notes or POSIX-adjusted cron schedules.
-
-### 3.6 Stateless Sharing & Local History
-* **Hash-Based Sharing:** Expression state is mirrored to the URL hash (e.g., `https://cronbuild.com/#0_2_*_*_1-5`). Loading this link instantly initializes the application with the exact shared state without server or database dependencies.
-* **One-Click Actions:**
-  * Copy raw cron string
-  * Copy human explanation
-  * Copy share URL
-  * Copy active CI/CD snippet
-* **Recent & Pinned Storage:**
-  * Automatically stores the last 10 valid expressions in `localStorage`.
-  * Users can click a "Star" icon to permanently pin favorite expressions.
-
----
-
-## 4. State Architecture (LLM Implementation Guide)
-
-When implementing CronBuild with an LLM, use the following clean TypeScript data contracts:
-
-```typescript
-// Root Application State
-export interface CronAppState {
-  rawExpression: string;       // e.g. "*/15 9-17 * * 1-5"
-  isValid: boolean;
-  errorMessage: string | null;
-  humanReadable: string;       // Generated via cronstrue
-  activeTab: 'minute' | 'hour' | 'dom' | 'month' | 'dow';
-  timezone: 'local' | 'utc';
-  nextRuns: string[];          // Next 5 ISO timestamps
-  history: HistoryItem[];
-  pinned: string[];
-}
-
-export interface HistoryItem {
-  expression: string;
-  description: string;
-  timestamp: number;
-}
-
-// GUI Field State Slices
-export type FieldSelectionType = 'every' | 'interval' | 'specific';
-
-export interface FieldState {
-  type: FieldSelectionType;
-  intervalValue: number;
-  intervalStart: number;
-  specificValues: number[];
-}
-```
-
-### Component Hierarchy
-```text
-App
-├── Header (Logo, Search Presets Trigger, Dark/Light Mode)
-├── PresetSearchModal (Cmd+K dialog, keyboard navigable)
-├── TokenizedCronBar (Interactive segment pills, raw text field, copy buttons)
-├── NaturalLanguageBanner (Formatted human text via cronstrue)
-├── BuilderTabsContainer
-│   ├── MinuteBuilder
-│   ├── HourBuilder
-│   ├── DayOfMonthBuilder
-│   ├── MonthBuilder
-│   └── DayOfWeekBuilder
-├── DashboardBottomGrid
-│   ├── NextExecutionsCard (Local/UTC toggle, timestamp list, relative countdown)
-│   └── CodeSnippetsCard (Crontab, GitHub Actions, Kubernetes tabs)
-└── RecentAndPinnedBar (Quick-load chips with star/remove actions)
+┌──────────────────────────────────────────────────────────────────────┐
+│  [Logo] CronBuild                    [Preset ▾ dropdown]   [☀/🌙]  │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  TOKENIZED CRON PILL BAR (click any pill to configure):              │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐       │
+│  │ MINUTE  │ │  HOUR   │ │  D-O-M  │ │  MONTH  │ │  D-O-W  │  [📋] │
+│  │  */15   │ │  09-17  │ │    *    │ │    *    │ │   1-5   │       │
+│  └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘       │
+│                                                                      │
+│  RAW INPUT: [ */15 09-17 * * 1-5                             ] [📋] │
+│  SUMMARY:   "Every 15 min, 09:00 AM – 05:59 PM, Mon–Fri"           │
+├──────────────────────────────────────────────────────────────────────┤
+│  BUILDER PANEL                                                       │
+│  Tabs: [Minute] [Hour] [Day of Month] [Month] [Day of Week▪]        │
+│  ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄  │
+│  (Active: Day of Week)                                               │
+│  (○) Every day (*)                                                   │
+│  (●) Specific days:                                                  │
+│      [ ] Sun  [✓] Mon  [✓] Tue  [✓] Wed  [✓] Thu  [✓] Fri  [ ] Sat │
+│      Quick: [Weekdays] [Weekends] [Clear]                            │
+│  (○) Interval: Every [2] days starting [Tuesday]                     │
+├──────────────────────────────────────────────────────────────────────┤
+│  VISUAL TIMELINE (24h × 7d)          │  EXPORT SNIPPETS              │
+│  ┌──────────────────────────────┐    │  Tabs: [crontab] [GH Actions] │
+│  │  Heatmap / dot grid showing │    │        [Kubernetes]            │
+│  │  when the cron expression   │    │  ┌──────────────────────────┐  │
+│  │  fires across the week      │    │  │ schedule:                │  │
+│  └──────────────────────────────┘    │  │   - cron: '*/15 …'      │  │
+│                                      │  └──────────────────────────┘  │
+│  NEXT 5 RUNS                         │  [Copy Snippet]  [Share URL]  │
+│  TZ: (●) Local [Asia/Riyadh] (○) UTC│                               │
+│  1. 2026-09-02 09:00 (in 1h)         │                               │
+│  2. 2026-09-02 09:15                 │                               │
+│  3. 2026-09-02 09:30                 │                               │
+│  4. 2026-09-02 09:45                 │                               │
+│  5. 2026-09-02 10:00                 │                               │
+├──────────────────────────────────────────────────────────────────────┤
+│  RECENT: [*/15 09-17 * * 1-5] [0 0 * * *] [0 2 * * 0]  ← auto-saved│
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 5. Non-Functional Requirements
+## 3. UX Principles
 
-* **Zero Latency & Client-Side Execution:** Keystroke evaluation and translation must complete in $<10	ext{ ms}$. No server calls or third-party tracking APIs.
-* **Lightweight Footprint:** Production bundle size $\le 250	ext{ KB}$ gzipped.
-* **Accessibility (WCAG 2.1 AA):**
-  * Complete keyboard navigation (`Tab` index through pills, `Arrow` keys across tab panels, `Space`/`Enter` to toggle days/hours).
-  * Explicit ARIA roles (`role="tablist"`, `role="tab"`, `aria-selected`, `aria-live="polite"` for human descriptions).
-* **Responsive Breakpoints:**
-  * Mobile viewport ($< 768	ext{px}$): Horizontal scrolling token bar, stacked two-column bottom cards.
-  * Desktop viewport ($\ge 768	ext{px}$): Full token layout with side-by-side execution forecast and code snippet cards.
+1. **Dark mode default.** Light mode available via toggle. Developer tools should feel native to terminal/IDE workflows.
+2. **Animated pill transitions.** When a pill value changes, the old value fades out and the new value slides in. CSS transitions only — no animation libraries.
+3. **Change diff flash.** When a field changes, its pill briefly pulses with an accent glow to draw attention to what changed.
+4. **Toast feedback.** Every copy action triggers a brief "Copied!" toast notification (auto-dismiss after 2s). No silent clipboard writes.
+5. **Inline validation.** Invalid tokens turn the affected pill amber/red with a tooltip error (e.g., "Minute must be 0–59"). The rest of the UI remains interactive.
+6. **Bi-directional sync.** GUI → raw string and raw string → GUI are always in lockstep. Editing either side instantly updates the other, the human summary, the timeline, the next-5-runs list, and the URL hash.
 
 ---
 
-## 6. Scope Boundaries & MVP Differentiation
+## 4. Core Features
 
-| Feature Area | In Scope (MVP v1.0) | Out of Scope (Post-MVP v2.0) |
-| :--- | :--- | :--- |
-| **Cron Syntax** | Standard 5-field POSIX (`* * * * *`) | 6-field (seconds) & 7-field (years) |
-| **Input Methods** | Interactive GUI + Raw Input + `Cmd+K` Presets | Freeform heuristic client NLP engine |
-| **Output Formats** | Crontab, GitHub Actions, K8s, AWS | `.ics` Calendar files, Systemd timers |
-| **State Storage** | URL Hash + Browser `localStorage` | Cloud database, user accounts, teams |
-| **Execution** | Client-side forecast (Next 5 runs via `cron-parser`) | Live webhook monitoring / ping alerts |
-| **Visualizations**| Interactive Token Pills + Relative Countdown | Complex 30-day run frequency histograms |
+### 4.1 Cron Syntax Engine
+Standard 5-field POSIX cron: `minute hour day-of-month month day-of-week`. Supported operators: `*` (any), `,` (list), `-` (range), `/` (step).
+
+### 4.2 Visual Field Builders
+Each of the 5 fields gets a dedicated tab panel with these modes:
+
+| Field | Mode A (Wildcard) | Mode B (Interval) | Mode C (Specific) |
+|:---|:---|:---|:---|
+| **Minute** (0–59) | Every minute `*` | Every N min from X `X/N` | 10×6 multi-select grid |
+| **Hour** (0–23) | Every hour `*` | Every N hours from X `X/N` | 24-cell picker with AM/PM labels |
+| **Day of Month** (1–31) | Every day `*` | Every N days from X `X/N` | 31-cell calendar grid |
+| **Month** (1–12) | Every month `*` | — | 12 toggle pills (Jan–Dec) |
+| **Day of Week** (0–6) | Every day `*` | Every N days from X | 7 checkboxes + Weekday/Weekend shortcuts |
+
+### 4.3 Preset Dropdown
+A searchable dropdown (triggered by button click or `Cmd+K` / `Ctrl+K` keyboard shortcut) containing common real-world schedules:
+
+- **Common:** Every minute, Every 5 minutes, Every 15 minutes, Hourly, Daily at midnight, Weekly on Sunday at 3 AM
+- **Business:** Weekdays at 9 AM, Twice daily (noon & midnight), First of every month, Quarterly (Jan/Apr/Jul/Oct 1st)
+
+Selecting a preset closes the dropdown, populates the raw input, syncs the GUI, and updates the URL hash.
+
+### 4.4 Visual Timeline (24h × 7d)
+A compact heatmap grid: 7 rows (Mon–Sun) × 24 columns (00–23). Cells where the cron fires are filled with the accent color; inactive cells are dim. This gives an instant visual fingerprint of the schedule's coverage.
+
+Implementation: a simple `<div>` grid. Each cell is a small square. Color is toggled based on whether `cron-parser` produces a hit in that hour/day slot. No canvas, no charting library.
+
+### 4.5 Execution Forecast
+Display the next 5 execution timestamps computed by `cron-parser`. Each timestamp shows:
+- Formatted date/time in the selected timezone (Local or UTC)
+- Static relative label (e.g., "in 42 min") — computed once when the expression changes, not live-ticking
+
+Timezone is auto-detected via `Intl.DateTimeFormat().resolvedOptions().timeZone` with a toggle to switch to UTC.
+
+### 4.6 Developer Export Snippets
+Three tabbed code blocks with syntax highlighting and a "Copy" button each:
+
+**Linux crontab:**
+```
+*/15 09-17 * * 1-5 /path/to/script.sh
+```
+
+**GitHub Actions:**
+```yaml
+on:
+  schedule:
+    - cron: '*/15 09-17 * * 1-5'
+```
+
+**Kubernetes CronJob:**
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: scheduled-job
+spec:
+  schedule: "*/15 09-17 * * 1-5"
+```
+
+### 4.7 Sharing & History
+- **URL hash sharing:** Expression state is encoded in the URL hash (e.g., `#*/15_09-17_*_*_1-5`). Loading this URL restores the full state. The "Share URL" button copies this link.
+- **Recent expressions:** The last 10 valid expressions are auto-saved to `localStorage` and displayed as clickable chips at the bottom of the page. Clicking a chip restores that expression.
 
 ---
 
-## 7. MVP Acceptance Criteria
+## 5. Scope Boundaries
 
-1. **Deterministic Bi-Directional Sync:** Modifying any control in the GUI updates the raw string immediately without cursor jumps; editing the raw string synchronizes all GUI controls accurately.
-2. **Error Resilience:** Entering invalid expressions (e.g., `80 * * * *` or `* * * 13 *`) cleanly transitions the UI into a non-crashing error state with specific field-level hints.
-3. **Preset Execution:** Selecting any preset item from the `Cmd+K` palette populates the raw string, updates GUI tabs, and generates execution previews in $< 50	ext{ ms}$.
-4. **Zero-Backend State Restoral:** Appending `#15_10_*_*_1-5` to the application URL and refreshing in an incognito window faithfully restores all 5 fields and highlights the active tokens.
-5. **LLM Feasibility:** Complete codebase can be generated and assembled in standard modern React/Tailwind without complex custom parsers by referencing `cronstrue` and `cron-parser`.
+| Area | MVP (v1.0) | Post-MVP (v2.0+) |
+|:---|:---|:---|
+| Cron syntax | 5-field POSIX | 6-field (seconds), 7-field (years) |
+| Input | GUI + raw input + preset dropdown | Freeform natural language input |
+| Exports | crontab, GitHub Actions, Kubernetes | AWS EventBridge, systemd timers, `.ics` |
+| Persistence | URL hash + `localStorage` | Cloud sync, accounts, teams |
+| Forecast | Next 5 runs (client-side) | Webhook monitoring, alerting |
+| Visualization | 24h×7d timeline heatmap | 30-day histogram, calendar overlay |
+| Compare | — | Side-by-side expression diff |
+| Accessibility | Keyboard navigation + semantic HTML | Full WCAG 2.1 AA audit |
+| PWA | — | Service worker, offline support |
+
+---
+
+## 6. Acceptance Criteria
+
+1. **Bi-directional sync:** Changing any GUI control updates the raw string, human summary, timeline, next runs, and URL hash within one render cycle. Editing the raw string syncs all GUI controls. No cursor jumps in the text input.
+2. **Validation:** Entering `80 * * * *` or `* * * 13 *` highlights the offending pill in red with a field-specific error message. The app does not crash or blank out.
+3. **Preset loading:** Selecting any preset from the dropdown populates all fields, updates the timeline, and shows the correct next 5 runs.
+4. **Stateless restore:** Navigating to `cronbuild.com/#0_2_*_*_1-5` in an incognito window correctly restores the expression `0 2 * * 1-5` with all pills, builder, timeline, and forecast reflecting that schedule.
+5. **Export accuracy:** Each of the 3 export snippets contains the exact current cron expression in the correct format for its target platform. Copy buttons write to clipboard and show a toast.
+6. **Timeline accuracy:** The 24h×7d heatmap correctly lights up only the cells where the current expression would fire.
