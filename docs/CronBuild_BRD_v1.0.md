@@ -10,7 +10,7 @@
 
 ## 1. Overview
 
-CronBuild is an ultra-fast, client-side visual cron expression builder and real-time interpreter. It runs entirely in the browser with zero backend dependencies, targeting developers and DevOps engineers who need to construct, validate, and export cron schedules without memorizing syntax. The tool features an interactive tokenized pill bar, a 24h × 7d visual heatmap timeline, instant CI/CD and AI developer export snippets, and native `llms.txt` deep-linking support — all wrapped in a polished, dark-mode-first interface.
+CronBuild is an ultra-fast, client-side visual cron expression builder and real-time interpreter. It has great UX and intutive GUI. It runs entirely in the browser with zero backend dependencies, targeting developers and DevOps engineers who need to construct, validate, and export cron schedules without memorizing syntax. The tool features an interactive tokenized pill bar, a 24h × 7d visual heatmap timeline, instant CI/CD and AI developer export snippets, and native `llms.txt` deep-linking support — all wrapped in a polished, dark-mode-first interface.
 
 ---
 
