@@ -1,791 +1,841 @@
-# CronBuild.com — Implementation Plan
+# CronBuild.com — Implementation Plan (Production-Grade)
 
 > Derived from [CronBuild_BRD_v1.0.md](./CronBuild_BRD_v1.0.md)
 >
-> **Stack:** React 19+ (Vite), TypeScript, Tailwind CSS, Lucide Icons
+> **Stack:** React 19+ (Vite 6), TypeScript 5.7+ (Strict), Tailwind CSS v4, Lucide Icons
 > **Libraries:** `cronstrue`, `cron-parser`
-> **Hosting:** Cloudflare Pages (static SPA, zero backend)
+> **Testing:** Vitest, React Testing Library, jsdom
+> **Hosting:** Cloudflare Pages (100% Client-Side Static SPA, Zero Backend, Privacy-First)
 
 ---
 
-## Phase 0 — Project Scaffolding
+## Architecture Overview & Quality Principles
 
-### Task 0.1: Initialize Vite + React + TypeScript project
+1. **Modern Developer-Tool Aesthetics:** Dark-mode first by default (deep `zinc-950` / `zinc-900` surfaces, subtle `zinc-800` borders, luminous `emerald-500` / `cyan-400` accents, Geist / Inter typography, JetBrains Mono for expressions).
+2. **Bi-Directional State Integrity:** Separation of the active typed raw input draft buffer from the validated `CronState` AST. Guarantees zero cursor jumps, zero focus loss, and immediate reactive updates across all components.
+3. **Automated Test Guardrails:** Every core parsing, formatting, validation, and serialization function must have 100% test coverage using Vitest before UI integration.
+4. **Rich Micro-Interactions:** CSS-only animations (smooth token flip/fade transitions, change-diff pulse glows, toast notification queues, accessible hover tooltips).
+5. **Keyboard & Accessibility First (WCAG 2.1 AA):** `Cmd+K` / `Ctrl+K` command palette, arrow-key grid navigation, semantic ARIA landmarks, live-region screen reader announcements.
+
+---
+
+## Phase 0 — Project Scaffolding & Engineering Tooling
+
+### Task 0.1: Initialize Vite 6 + React 19 + TypeScript (Strict)
 
 **Scope:**
-
-- Run `npm create vite@latest` with the `react-ts` template at the repo root.
-- Configure `tsconfig.json` with `strict: true`, path aliases (`@/` → `src/`).
-- Add `vite.config.ts` with the `@` alias resolution.
-- Verify `npm run dev` starts successfully.
+- Initialize a React + TypeScript project at the repository root using Vite (`npm create vite@latest . -- --template react-ts`).
+- Configure `tsconfig.json` and `tsconfig.app.json`:
+  - Enable `strict: true`, `noUncheckedIndexedAccess: true`, `exactOptionalPropertyTypes: true`.
+  - Configure path alias: `@/*` → `./src/*`.
+- Configure `vite.config.ts` with `vite-tsconfig-paths` (or `@` alias resolution) and optimize dependencies.
+- Verify `npm run dev` serves cleanly on `http://localhost:5173`.
 
 **Files to create/modify:** `package.json`, `tsconfig.json`, `tsconfig.app.json`, `vite.config.ts`, `src/main.tsx`, `src/App.tsx`, `index.html`
 
-**Acceptance criteria:** `npm run dev` serves a blank page at `localhost:5173` with no errors.
+**Acceptance criteria:**
+- `npm run dev` starts without warnings or errors.
+- `import { something } from '@/lib/something'` resolves properly.
 
 ---
 
-### Task 0.2: Install and configure Tailwind CSS v4
+### Task 0.2: Configure Tailwind CSS v4 & Design Tokens
 
 **Scope:**
-
-- Install `tailwindcss @tailwindcss/vite`.
-- Add the Tailwind Vite plugin to `vite.config.ts`.
-- Replace default CSS with a root `src/index.css` containing `@import "tailwindcss"`.
-- Define dark-mode strategy (`class` based via a `dark` class on `<html>`).
-- Define custom theme tokens (accent color, surface colors, spacing scale) under `@theme` in `src/index.css`.
+- Install `tailwindcss` and `@tailwindcss/vite`.
+- Add the Tailwind Vite plugin in `vite.config.ts`.
+- Replace `src/index.css` with Tailwind v4 setup: `@import "tailwindcss";`.
+- Define custom `@theme` tokens in `src/index.css`:
+  - Color palette: `zinc` scales for neutrals, `emerald-500` / `emerald-400` for primary accents, `amber-500` for warnings, `rose-500` for syntax errors.
+  - Typography tokens: `font-sans` (system font stack with Inter / Geist fallback), `font-mono` (`JetBrains Mono`, `Fira Code`, `ui-monospace`).
+  - Keyframes: `@keyframes pill-flip`, `@keyframes pulse-glow`, `@keyframes toast-slide`.
+- Implement `dark` class selector strategy for seamless theme switching.
 
 **Files to create/modify:** `src/index.css`, `vite.config.ts`, `package.json`
 
-**Acceptance criteria:** Tailwind utility classes render correctly; dark mode toggles via class.
+**Acceptance criteria:**
+- Tailwind utilities work in components.
+- Custom fonts, theme colors, and `@keyframes` compile without warnings.
 
 ---
 
-### Task 0.3: Install runtime dependencies
+### Task 0.3: Install Runtime Dependencies
 
 **Scope:**
-
-- Install `cronstrue` (human-readable cron descriptions).
-- Install `cron-parser` (next-run computation and validation).
-- Install `lucide-react` (icons).
+- Install production dependencies:
+  - `cronstrue`: Human-readable cron explanation engine.
+  - `cron-parser`: Next execution forecasting, validation, and schedule iteration.
+  - `lucide-react`: Developer tool icons (Sun, Moon, Copy, Check, Clock, Calendar, Sparkles, Terminal, Share2, HelpCircle, etc.).
 
 **Files to create/modify:** `package.json`
 
-**Acceptance criteria:** All three packages import without errors in a test component.
+**Acceptance criteria:** All packages import without TypeScript typing errors.
 
 ---
 
-### Task 0.4: Set up project structure and foundational utilities
+### Task 0.4: Setup Automated Testing Suite (Vitest + React Testing Library)
 
 **Scope:**
+- Install development dependencies:
+  - `vitest`, `@testing-library/react`, `@testing-library/jest-dom`, `@testing-library/user-event`, `jsdom`.
+- Configure `vitest.config.ts` (or `vite.config.ts` test section) with `environment: 'jsdom'`, `globals: true`, and setup file `src/test/setup.ts`.
+- Add test script to `package.json`: `"test": "vitest run"`, `"test:watch": "vitest"`, `"test:coverage": "vitest run --coverage"`.
+- Create a smoke test `src/test/smoke.test.ts` to verify DOM environment and assertion matchers.
 
-Create the directory layout and placeholder files:
+**Files to create/modify:** `vite.config.ts` (or `vitest.config.ts`), `src/test/setup.ts`, `src/test/smoke.test.ts`, `package.json`
 
-```
-src/
-├── components/
-│   ├── Header/
-│   ├── PillBar/
-│   ├── BuilderPanel/
-│   ├── Timeline/
-│   ├── Forecast/
-│   ├── ExportPanel/
-│   ├── RecentExpressions/
-│   └── ui/              ← shared UI primitives (Toast, Tooltip, Tabs, Dropdown)
-├── hooks/
-│   ├── useCronState.ts
-│   ├── useTheme.ts
-│   └── useLocalStorage.ts
-├── lib/
-│   ├── cron-utils.ts     ← parse / validate / serialize helpers
-│   ├── hash-utils.ts     ← URL hash encode/decode
-│   └── constants.ts      ← presets, field metadata
-├── types/
-│   └── cron.ts           ← CronField, CronExpression, Preset, etc.
-└── App.tsx
-```
-
-Define core TypeScript types in `src/types/cron.ts`:
-
-```ts
-type FieldName = 'minute' | 'hour' | 'dayOfMonth' | 'month' | 'dayOfWeek';
-
-type FieldMode = 'every' | 'interval' | 'specific';
-
-interface FieldState {
-  mode: FieldMode;
-  intervalStep?: number;    // N in */N or X/N
-  intervalFrom?: number;    // X in X/N
-  specificValues?: number[];
-}
-
-type CronState = Record<FieldName, FieldState>;
-```
-
-**Files to create:** All directories and files listed above (stub exports).
-
-**Acceptance criteria:** `npm run build` succeeds with zero TypeScript errors on the stub project.
+**Acceptance criteria:** `npm run test` executes and passes in under 1 second.
 
 ---
 
-## Phase 1 — Cron Syntax Engine (Core Logic)
-
-### Task 1.1: Implement cron field serializer / deserializer
+### Task 0.5: Define Domain Types and Directory Hierarchy
 
 **Scope:**
+- Establish standard directory hierarchy:
+  ```
+  src/
+  ├── components/
+  │   ├── BuilderPanel/      ← Field editors (Minute, Hour, DOM, Month, DOW)
+  │   ├── CommandPalette/    ← Cmd+K searchable preset modal
+  │   ├── ExportPanel/       ← Crontab, GH Actions, K8s, AI prompt
+  │   ├── Forecast/          ← Next 5 runs with timezone toggle
+  │   ├── Header/            ← Logo, Preset button, Theme toggle
+  │   ├── PillBar/           ← Tokenized pills, raw input, summary
+  │   ├── RecentExpressions/ ← Saved history chips
+  │   ├── Timeline/          ← 24h × 7d visual heatmap
+  │   └── ui/                ← Accessible primitives (Toast, Tooltip, Tabs, Modal)
+  ├── hooks/                 ← useCronState, useTheme, useLocalStorage, useKeyboard
+  ├── lib/                   ← cron-utils, hash-utils, constants, formatters
+  ├── test/                  ← Unit and integration test suites
+  └── types/                 ← cron.ts
+  ```
+- Define domain models in `src/types/cron.ts`:
+  - `type FieldName = 'minute' | 'hour' | 'dayOfMonth' | 'month' | 'dayOfWeek';`
+  - `type FieldMode = 'every' | 'interval' | 'specific';`
+  - `interface FieldState { mode: FieldMode; intervalStep?: number; intervalFrom?: number; specificValues?: number[]; }`
+  - `type CronState = Record<FieldName, FieldState>;`
+  - `interface FieldValidation { valid: boolean; error?: string; }`
+  - `interface CronValidation { isValid: boolean; fieldErrors: Record<FieldName, string | null>; globalError?: string; }`
+  - `interface Preset { id: string; label: string; category: 'Common' | 'Business'; expression: string; description: string; }`
+  - `interface ExecutionForecast { date: Date; formattedLocal: string; formattedUtc: string; relativeTime: string; }`
 
+**Files to create:** `src/types/cron.ts`, directory placeholders.
+
+**Acceptance criteria:** `npm run build` passes with zero type errors.
+
+---
+
+## Phase 1 — Cron Syntax Engine & Core Logic
+
+### Task 1.1: Cron Field Serializer, Deserializer & Validator
+
+**Scope:**
 In `src/lib/cron-utils.ts`:
+- **Range Collapsing Algorithm:**
+  - `collapseNumberArray(numbers: number[]): string`: Collapses consecutive integers into ranges (e.g., `[1, 2, 3, 5, 7, 8, 9]` → `"1-3,5,7-9"`).
+- **Field State Serialization:**
+  - `fieldStateToToken(field: FieldName, state: FieldState): string`:
+    - `mode === 'every'` → `*`
+    - `mode === 'interval'` → step format: when `intervalFrom === 0` (or field min) and wildcard step → `*/N`, else `X/N`.
+    - `mode === 'specific'` → sorted, collapsed comma-separated list.
+- **Field Token Deserialization:**
+  - `tokenToFieldState(field: FieldName, token: string): FieldState`:
+    - Parses `*` into `every`.
+    - Parses `*/N` or `X/N` into `interval` with step `N` and from `X`.
+    - Parses `1,2,3` or `1-5` or `1-5,10` into sorted number array `specific`.
+    - Normalizes month names (`JAN`–`DEC` → `1`–`12`) and day names (`SUN`–`SAT` → `0`–`6`).
+    - Transparently normalizes POSIX Sunday `7` → `0`.
+- **Validation Engine:**
+  - `validateField(field: FieldName, token: string): FieldValidation`:
+    - Checks bounds: minute (0–59), hour (0–23), DOM (1–31), month (1–12), DOW (0–6).
+    - Checks syntax validity for step divisors (e.g. `*/0` is invalid) and ranges (`5-2` is invalid).
+  - `validateExpression(expr: string): CronValidation`:
+    - Validates token count (must be exactly 5 whitespace-separated fields).
+    - Returns per-field error messages (e.g., `"Minute must be between 0 and 59"`).
 
-- `fieldStateToToken(field: FieldName, state: FieldState): string` — converts a `FieldState` to its cron token (`*`, `*/15`, `1,3,5`, `1-5`, etc.). Must handle `every`, `interval`, and `specific` modes. For `specific` mode, collapse consecutive values into ranges (e.g., `[1,2,3,5]` → `1-3,5`).
-- `tokenToFieldState(field: FieldName, token: string): FieldState` — parses a single cron token string back into a `FieldState`.
-- `cronStateToExpression(state: CronState): string` — joins all 5 fields with spaces.
-- `expressionToCronState(expr: string): CronState` — splits on whitespace and parses each field.
-- `validateField(field: FieldName, token: string): { valid: boolean; error?: string }` — validates a single field against its legal range (minute 0–59, hour 0–23, DOM 1–31, month 1–12, DOW 0–6). Returns field-specific error messages (e.g., `"Minute must be 0–59"`).
-- `validateExpression(expr: string): { valid: boolean; errors: Record<FieldName, string | null> }` — validates all 5 fields.
-
-**Files to create/modify:** `src/lib/cron-utils.ts`, `src/types/cron.ts`
+**Files to create/modify:** `src/lib/cron-utils.ts`
 
 **Acceptance criteria:**
-- Round-trip: `cronStateToExpression(expressionToCronState(expr))` preserves semantics for all preset expressions.
-- `validateField('minute', '80')` returns `{ valid: false, error: "Minute must be 0–59" }`.
-- Specific values `[1,2,3,5]` serialize to `1-3,5`.
+- Round-trip accuracy: deserializing and re-serializing preserves semantics.
+- Invalid tokens return actionable, user-friendly error messages.
 
 ---
 
-### Task 1.2: Implement human-readable summary via `cronstrue`
+### Task 1.2: Unit Test Suite for Cron Syntax Engine
 
 **Scope:**
+In `src/test/cron-utils.test.ts`:
+- Write unit tests covering:
+  - Range collapsing (`[0, 15, 30, 45]` → `"0,15,30,45"`, `[1, 2, 3, 4, 5]` → `"1-5"`).
+  - Normalization of day names (`MON-FRI` → `1-5`), Sunday aliases (`7` → `0`).
+  - Interval parsing (`*/10`, `5/15`).
+  - Validation bounds (reject `60 * * * *`, `* 25 * * *`, `* * 32 * *`, `* * * 13 *`, `* * * * 8`).
+  - Step by zero rejection (`*/0 * * * *`).
+  - Incomplete field count (`* * * *` → global error `"Expression must have exactly 5 fields"`).
 
+**Files to create:** `src/test/cron-utils.test.ts`
+
+**Acceptance criteria:** 100% passing tests via `npm run test`.
+
+---
+
+### Task 1.3: Human-Readable Summary via `cronstrue`
+
+**Scope:**
 In `src/lib/cron-utils.ts`:
+- Implement `getHumanReadable(expr: string): { description: string; isError: boolean }`.
+- Options configured: `use24HourTimeFormat: false`, `verbose: true`, `dayOfWeekStartIndexZero: true`.
+- If invalid or unparseable, return friendly fallback text: `"Invalid or incomplete cron expression"`.
 
-- `getHumanReadable(expr: string): string` — wraps `cronstrue.toString(expr)` with error handling. Returns the human-readable string or a fallback error message for invalid expressions.
+**Files to create/modify:** `src/lib/cron-utils.ts`, `src/test/cron-utils.test.ts`
 
-**Files to create/modify:** `src/lib/cron-utils.ts`
-
-**Acceptance criteria:** `getHumanReadable('*/15 09-17 * * 1-5')` returns `"Every 15 minutes, between 09:00 AM and 05:59 PM, Monday through Friday"`.
+**Acceptance criteria:**
+- `getHumanReadable('*/15 09-17 * * 1-5')` returns `"Every 15 minutes, between 09:00 AM and 05:59 PM, Monday through Friday"`.
+- Unit tests verify formatting output.
 
 ---
 
-### Task 1.3: Implement next-runs forecast via `cron-parser`
+### Task 1.4: Next-Runs Forecasting Engine via `cron-parser`
 
 **Scope:**
-
 In `src/lib/cron-utils.ts`:
+- `getNextRuns(expr: string, count: number = 5, timezone?: string): ExecutionForecast[]`:
+  - Parses expression using `cron-parser.CronExpressionParser.parse(expr, { tz: timezone })`.
+  - Computes `count` next iterations safely in a `try/catch` block.
+  - Generates formatted date strings:
+    - Local format: `YYYY-MM-DD HH:mm:ss (Z)`
+    - UTC format: `YYYY-MM-DD HH:mm:ss UTC`
+    - Relative time string: `"in 15 minutes"`, `"in 2 hours"`, `"tomorrow at 09:00"`.
+  - Returns empty array on invalid expressions.
+- `getLocalTimezone(): string`: Auto-detects system timezone via `Intl.DateTimeFormat().resolvedOptions().timeZone`.
 
-- `getNextRuns(expr: string, count: number, tz: string): { timestamp: Date; relative: string }[]` — uses `cron-parser` to compute the next `count` execution times in the given timezone. Computes a static relative label (e.g., `"in 42 min"`) at call time (not live-ticking). Returns an empty array for invalid expressions.
-- `getLocalTimezone(): string` — returns `Intl.DateTimeFormat().resolvedOptions().timeZone`.
+**Files to create/modify:** `src/lib/cron-utils.ts`, `src/test/cron-utils.test.ts`
 
-**Files to create/modify:** `src/lib/cron-utils.ts`
-
-**Acceptance criteria:** Returns exactly 5 results for a valid expression; returns `[]` for an invalid one; relative labels are human-readable.
+**Acceptance criteria:**
+- Always returns up to 5 valid forecasts for valid expressions.
+- Accurately respects UTC vs Local timezone conversion.
 
 ---
 
-### Task 1.4: Implement heatmap computation
+### Task 1.5: 24h × 7d Heatmap Matrix Computation
 
 **Scope:**
-
 In `src/lib/cron-utils.ts`:
+- `computeHeatmap(expr: string): { matrix: boolean[][]; runCounts: number[][] }`:
+  - Matrix dimensions: 7 rows (Day 0 = Monday through Day 6 = Sunday) × 24 columns (Hours 00 through 23).
+  - `matrix[day][hour]`: Boolean indicating if at least one trigger occurs during that hour.
+  - `runCounts[day][hour]`: Number of trigger iterations within that specific hour (e.g., for `*/15`, run count is 4).
+  - Uses `cron-parser` to test hour/day intersections over an arbitrary clean 7-day Monday-to-Sunday reference window.
+  - Returns 7×24 zeroes and falses on invalid expressions.
 
-- `computeHeatmap(expr: string): boolean[][]` — returns a 7×24 matrix (rows = Monday–Sunday, cols = hours 00–23). Each cell is `true` if the cron expression fires at least once during that day/hour combination. Uses `cron-parser` to iterate over a representative week. Returns an all-false matrix for invalid expressions.
+**Files to create/modify:** `src/lib/cron-utils.ts`, `src/test/cron-utils.test.ts`
 
-**Files to create/modify:** `src/lib/cron-utils.ts`
-
-**Acceptance criteria:** For `* 9 * * 1` (every minute at 9 AM on Mondays), only `heatmap[0][9]` is `true` (Monday index 0, hour 9). All other cells are `false`.
+**Acceptance criteria:**
+- For `0 9 * * 1` (Monday 09:00), only `matrix[0][9]` is `true` with `runCounts[0][9] = 1`.
+- For `*/15 * * * *`, all cells are `true` with `runCounts = 4`.
 
 ---
 
-## Phase 2 — State Management & URL Sync
+## Phase 2 — State Management, URL Synchronization & History
 
-### Task 2.1: Implement `useCronState` hook (central state)
+### Task 2.1: Implement `useCronState` Hook with Input Buffering
 
 **Scope:**
+In `src/hooks/useCronState.ts`:
+- Create central reactive state management:
+  - `cronState: CronState` (active parsed field states).
+  - `rawInput: string` (controlled input string buffer).
+  - `activeField: FieldName` (currently highlighted/active tab).
+  - `validation: CronValidation` (per-field and global errors).
+  - `humanReadable: string`.
+  - `lastChangedField: FieldName | null` (triggers flash diff animation).
+- State Synchronization Pattern:
+  - `setField(field: FieldName, state: FieldState)`:
+    - Updates the field state.
+    - Re-serializes the full expression string.
+    - Synchronizes `rawInput`.
+    - Sets `lastChangedField = field` (cleared after 600ms).
+  - `setRawInput(value: string)`:
+    - Updates `rawInput` immediately (ensuring 100% fluid typing without cursor jump).
+    - If valid 5-field expression: parses into `cronState`, clears errors, and triggers updates.
+    - If invalid: preserves user input, updates `validation.fieldErrors` and `validation.isValid = false` without corrupting valid visual tabs.
+  - `loadPreset(expression: string)`:
+    - Sets `rawInput` and syncs all 5 field states.
+
+**Files to create/modify:** `src/hooks/useCronState.ts`, `src/types/cron.ts`
+
+**Acceptance criteria:**
+- Changing a field in the GUI updates the raw string within 1 render frame.
+- Typing `*/` in the raw input does not reset cursor position or clear GUI controls.
+
+---
+
+### Task 2.2: Implement URL Hash Synchronization
+
+**Scope:**
+In `src/lib/hash-utils.ts`:
+- Format: `#<minute>_<hour>_<dom>_<month>_<dow>` (e.g. `#*/15_09-17_*_*_1-5`).
+- `encodeHash(expression: string): string`: Replaces spaces with underscores.
+- `decodeHash(hash: string): string | null`: Replaces underscores with spaces, validates 5 fields, returns `null` if malformed.
 
 In `src/hooks/useCronState.ts`:
+- On mount: check `window.location.hash`. If valid, restore immediately.
+- On valid state change: update `window.history.replaceState(null, '', encodeHash(expression))` without triggering navigation/reloads.
+- Listen to `window.addEventListener('hashchange')` to support browser Back/Forward navigation.
 
-- Single source of truth: `CronState` (5 field states) + derived `expression: string` + derived `humanReadable: string` + derived `isValid: boolean` + derived `errors: Record<FieldName, string | null>`.
-- Expose updaters: `setField(field: FieldName, state: FieldState)`, `setExpression(expr: string)` (parses and syncs all fields), `loadPreset(preset: Preset)`.
-- All derived values recompute synchronously on every state change (within one render cycle per BRD §6.1).
-- On mount, initialize from URL hash if present, otherwise use the default expression `* * * * *`.
+**Files to create/modify:** `src/lib/hash-utils.ts`, `src/hooks/useCronState.ts`, `src/test/hash-utils.test.ts`
 
-**Dependencies:** Task 1.1, Task 1.2
-
-**Files to create/modify:** `src/hooks/useCronState.ts`
-
-**Acceptance criteria:** Changing a field via `setField` immediately updates `expression`, `humanReadable`, `isValid`, and `errors`. Calling `setExpression('*/15 09-17 * * 1-5')` updates all 5 field states.
+**Acceptance criteria:**
+- Loading `http://localhost:5173/#0_2_*_*_1-5` in an incognito window initializes with `0 2 * * 1-5`.
+- Back/forward navigation restores respective expressions.
 
 ---
 
-### Task 2.2: Implement URL hash sync
+### Task 2.3: Implement `useLocalStorage` & Recent Expressions History
 
 **Scope:**
+In `src/hooks/useLocalStorage.ts` and `src/hooks/useRecentExpressions.ts`:
+- Store last 10 valid expressions under `localStorage` key `cronbuild:recent`.
+- Logic:
+  - Deduplicate entries.
+  - Don't push identical consecutive expressions.
+  - Provide `clearRecent()` and `removeRecent(expr: string)`.
+  - Persist theme preferences (`cronbuild:theme` = `'dark' | 'light'`).
 
-In `src/lib/hash-utils.ts`:
+**Files to create/modify:** `src/hooks/useLocalStorage.ts`, `src/hooks/useRecentExpressions.ts`, `src/test/storage.test.ts`
 
-- `encodeHash(expr: string): string` — encodes expression to URL hash format: `#<minute>_<hour>_<dom>_<month>_<dow>` (fields separated by `_`).
-- `decodeHash(hash: string): string | null` — decodes hash back to a space-separated cron expression. Returns `null` for invalid hashes.
-
-In `useCronState`:
-
-- On every valid expression change, push `encodeHash(expression)` to `window.location.hash` without triggering a page reload.
-- On `hashchange` event, decode and call `setExpression`.
-- On initial mount, read and apply `window.location.hash`.
-
-**Dependencies:** Task 2.1
-
-**Files to create/modify:** `src/lib/hash-utils.ts`, `src/hooks/useCronState.ts`
-
-**Acceptance criteria:** Navigating to `cronbuild.com/#0_2_*_*_1-5` in an incognito window restores all 5 fields (BRD §6.4). Editing the GUI updates the URL hash in real time.
+**Acceptance criteria:**
+- Valid expressions automatically append to recent history.
+- Survives page reload.
 
 ---
 
-### Task 2.3: Implement `useLocalStorage` hook and recent expressions
+## Phase 3 — Accessible UI Primitives & Design System
+
+### Task 3.1: Theme Switcher (`useTheme`)
 
 **Scope:**
-
-In `src/hooks/useLocalStorage.ts`:
-
-- Generic `useLocalStorage<T>(key: string, defaultValue: T): [T, (val: T) => void]` hook.
-
-In `useCronState` or a new `useRecentExpressions` hook:
-
-- Maintain a list of the last 10 valid expressions in `localStorage` under key `cronbuild:recent`.
-- Auto-save on expression change (debounced, deduplicated — no consecutive duplicates).
-- Expose `recentExpressions: string[]` and `clearRecent(): void`.
-
-**Dependencies:** Task 2.1
-
-**Files to create/modify:** `src/hooks/useLocalStorage.ts`, `src/hooks/useCronState.ts` (or `src/hooks/useRecentExpressions.ts`)
-
-**Acceptance criteria:** Refreshing the page preserves the last 10 expressions as clickable chips. Clicking a recent expression restores it.
-
----
-
-## Phase 3 — Shared UI Primitives
-
-### Task 3.1: Implement theme toggle (dark/light mode)
-
-**Scope:**
-
 In `src/hooks/useTheme.ts`:
-
-- `useTheme()` hook that reads saved preference from `localStorage` (key `cronbuild:theme`), falls back to `prefers-color-scheme` media query, and toggles the `dark` class on `<html>`.
-- Expose `theme: 'dark' | 'light'` and `toggleTheme()`.
+- Manages `'dark' | 'light'` theme.
+- Default to `'dark'`. If user preference exists in `localStorage`, use it.
+- Applies `dark` class to `document.documentElement`.
+- Updates `meta[name="theme-color"]` dynamically (`#09090b` for dark, `#ffffff` for light).
 
 **Files to create/modify:** `src/hooks/useTheme.ts`
 
-**Acceptance criteria:** Default is dark mode. Toggle switches immediately. Preference persists across reloads.
+**Acceptance criteria:** Switching theme applies immediately with zero flash of incorrect theme (FOUC).
 
 ---
 
-### Task 3.2: Implement Toast component
+### Task 3.2: Accessible Toast Notification System
 
 **Scope:**
+In `src/components/ui/Toast.tsx` and `src/components/ui/ToastContext.tsx`:
+- Lightweight, zero-dependency toast provider.
+- Methods: `toast.success(message)`, `toast.error(message)`, `toast.info(message)`.
+- Auto-dismiss after 2000ms (configurable).
+- Visuals: crisp dark surface (`zinc-900`), border (`zinc-700`), checkmark/alert icon, progress bar countdown, slide-in animation.
+- Accessible: `role="status"` and `aria-live="polite"`.
 
-In `src/components/ui/Toast.tsx`:
+**Files to create/modify:** `src/components/ui/Toast.tsx`, `src/components/ui/ToastContext.tsx`
 
-- A lightweight toast notification component.
-- Auto-dismiss after 2 seconds (per BRD §3.4).
-- Renders at a fixed position (bottom-center or bottom-right).
-- Expose a `useToast()` hook or context: `showToast(message: string)`.
-
-**Files to create/modify:** `src/components/ui/Toast.tsx`, `src/components/ui/ToastProvider.tsx` (or combined)
-
-**Acceptance criteria:** Calling `showToast("Copied!")` renders a toast that disappears after 2s. Multiple toasts stack without overlapping.
+**Acceptance criteria:** Calling `toast.success("Copied to clipboard!")` renders the toast, auto-dismisses after 2s, and allows manual dismissal.
 
 ---
 
-### Task 3.3: Implement Tooltip component
+### Task 3.3: Accessible Tooltip Primitive
 
 **Scope:**
-
 In `src/components/ui/Tooltip.tsx`:
-
-- Lightweight tooltip that appears on hover/focus.
-- Accepts `content: string` and `children: ReactNode`.
-- Used for validation error messages on pills (BRD §3.5).
+- Accessible tooltip supporting hover and keyboard focus.
+- Positions: top, bottom, left, right (with automatic boundary detection or sensible top default with arrow pointer).
+- `role="tooltip"`, `aria-describedby` association with trigger child.
+- Smooth scale-in transition (`scale-95` to `scale-100`, opacity `0` to `100`).
 
 **Files to create/modify:** `src/components/ui/Tooltip.tsx`
 
-**Acceptance criteria:** Tooltip renders above/below the target element. Tooltip is accessible (role, aria attributes).
+**Acceptance criteria:** Hovering or focusing an element displays the tooltip; pressing Escape or moving focus dismisses it.
 
 ---
 
-### Task 3.4: Implement Tabs component
+### Task 3.4: Accessible Tab Navigation
 
 **Scope:**
-
 In `src/components/ui/Tabs.tsx`:
-
-- Reusable tabbed interface component.
-- Props: `tabs: { id: string; label: string; content: ReactNode }[]`, `activeTab: string`, `onTabChange: (id: string) => void`.
-- Keyboard navigable (arrow keys switch tabs).
+- WAI-ARIA compliant tab system (`role="tablist"`, `role="tab"`, `role="tabpanel"`, `aria-selected`, `aria-controls`).
+- Full keyboard support: Left/Right Arrow keys navigate tabs and move focus.
+- Active tab pill styling with smooth layout transition or indicator bar.
 
 **Files to create/modify:** `src/components/ui/Tabs.tsx`
 
-**Acceptance criteria:** Renders tabs with correct active state. Keyboard arrow keys navigate between tabs.
+**Acceptance criteria:** Arrow keys cycle through tabs; Enter/Space activates tab.
 
 ---
 
-## Phase 4 — Header & Preset Dropdown
+## Phase 4 — Header & Command Palette (`Cmd+K`) Presets
 
-### Task 4.1: Implement Header component
+### Task 4.1: Header Component
 
 **Scope:**
-
 In `src/components/Header/Header.tsx`:
+- Left: CronBuild logo (custom SVG cron-dial icon) + "CronBuild" wordmark + "v1.0 MVP" subtle badge.
+- Center-Right: Presets button with `Cmd+K` / `Ctrl+K` key badge.
+- Right:
+  - Timezone quick indicator (e.g. `UTC+3`).
+  - GitHub repository icon link with tooltip.
+  - Theme toggle button (Sun/Moon with rotate transition).
+- Responsive: compact layout on mobile.
 
-- Logo (text or simple SVG) + "CronBuild" title on the left.
-- Preset dropdown trigger button (center-right).
-- Theme toggle (sun/moon icon from Lucide) on the far right.
-- Responsive: on mobile, elements stack or collapse gracefully.
+**Files to create/modify:** `src/components/Header/Header.tsx`
 
-**Dependencies:** Task 3.1
-
-**Files to create/modify:** `src/components/Header/Header.tsx`, `src/components/Header/index.ts`
-
-**Acceptance criteria:** Header renders with logo, preset button, and theme toggle. Theme toggle calls `toggleTheme()`.
-
----
-
-### Task 4.2: Implement Preset Dropdown with search
-
-**Scope:**
-
-In `src/components/Header/PresetDropdown.tsx`:
-
-- Define presets in `src/lib/constants.ts` as an array of `{ label: string; category: 'Common' | 'Business'; expression: string }`.
-- Presets (from BRD §4.3):
-  - **Common:** Every minute (`* * * * *`), Every 5 minutes (`*/5 * * * *`), Every 15 minutes (`*/15 * * * *`), Hourly (`0 * * * *`), Daily at midnight (`0 0 * * *`), Weekly on Sunday at 3 AM (`0 3 * * 0`).
-  - **Business:** Weekdays at 9 AM (`0 9 * * 1-5`), Twice daily noon & midnight (`0 0,12 * * *`), First of every month (`0 0 1 * *`), Quarterly Jan/Apr/Jul/Oct 1st (`0 0 1 1,4,7,10 *`).
-- Dropdown is triggered by button click **or** `Cmd+K` / `Ctrl+K` keyboard shortcut.
-- Includes a search/filter input at the top; filters by label text.
-- Grouped by category with section headers.
-- Selecting a preset calls `loadPreset()` on the cron state.
-
-**Dependencies:** Task 2.1
-
-**Files to create/modify:** `src/components/Header/PresetDropdown.tsx`, `src/lib/constants.ts`
-
-**Acceptance criteria:** `Cmd+K` opens the dropdown. Typing "weekly" filters to matching presets. Selecting a preset updates all fields, timeline, and URL hash (BRD §6.3).
+**Acceptance criteria:** Renders header correctly; theme toggle switches theme; clicking Preset button triggers command palette.
 
 ---
 
-## Phase 5 — Tokenized Cron Pill Bar
-
-### Task 5.1: Implement PillBar component
+### Task 4.2: Command Palette (`Cmd+K`) Preset Modal
 
 **Scope:**
+In `src/components/CommandPalette/CommandPalette.tsx`:
+- Global hotkey listener: `Cmd+K` (Mac) or `Ctrl+K` (Windows/Linux).
+- Backdrop: `backdrop-blur-md bg-black/60` with fade animation.
+- Modal: `zinc-900` card with `zinc-800` border, search input with search icon.
+- Content:
+  - Search filter input with auto-focus.
+  - Grouped categories: **Common Schedules** and **Business Schedules** (from BRD §4.3).
+  - Preset item displays: Name, cron expression tag (mono font), and plain description.
+  - Keyboard navigation: ArrowUp, ArrowDown, Enter to select, Escape to close.
+  - Selecting a preset loads it into `useCronState`, closes modal, and shows a toast notification.
 
+**Files to create/modify:** `src/components/CommandPalette/CommandPalette.tsx`, `src/lib/constants.ts`
+
+**Acceptance criteria:**
+- Pressing `Cmd+K` anywhere opens the modal.
+- Typing "business" or "9" filters to matching schedules.
+- Selecting with Enter loads the expression and closes modal.
+
+---
+
+## Phase 5 — Tokenized Cron Pill Bar & Raw Input
+
+### Task 5.1: Tokenized Pill Bar Container
+
+**Scope:**
 In `src/components/PillBar/PillBar.tsx`:
+- Horizontal card containing 5 interactive field pills in standard order:
+  `[MINUTE]` `[HOUR]` `[DAY OF MONTH]` `[MONTH]` `[DAY OF WEEK]`.
+- End of pill bar features a quick "Copy Expression" button with copy/check icon toggle.
+- Keyboard accessible: Tab between pills; Enter/Space activates the respective Builder Panel tab.
 
-- Render 5 clickable pill buttons in a horizontal row, one per cron field.
-- Each pill displays: field label (top, small) + current token value (bottom, mono font).
-- Clicking a pill sets the active tab in the Builder Panel to that field.
-- A clipboard copy button (`📋` icon from Lucide) at the end copies the full expression.
+**Files to create/modify:** `src/components/PillBar/PillBar.tsx`
 
-**Dependencies:** Task 2.1, Task 3.2
-
-**Files to create/modify:** `src/components/PillBar/PillBar.tsx`, `src/components/PillBar/Pill.tsx`, `src/components/PillBar/index.ts`
-
-**Acceptance criteria:** 5 pills render with correct labels and values. Clicking a pill activates the corresponding builder tab. Copy button triggers clipboard write + toast.
+**Acceptance criteria:** 5 pills render in correct order with active visual states.
 
 ---
 
-### Task 5.2: Implement pill animations and validation styling
+### Task 5.2: Animated Pill Component (`Pill.tsx`)
 
 **Scope:**
+In `src/components/PillBar/Pill.tsx`:
+- Visual Layout:
+  - Top: Field label in uppercase tracked font (e.g. `MINUTE`).
+  - Center: Current token value (e.g. `*/15`) in large `font-mono font-semibold`.
+- Micro-interactions (BRD §3.2, §3.3, §3.5):
+  - **Animated Value Transition:** CSS slide-up/fade transition on token value change.
+  - **Change-Diff Flash Glow:** When `lastChangedField === field`, trigger `@keyframes pulse-glow` (accent-colored glowing border/ring for 500ms).
+  - **Inline Validation Tooltip:** If field has error, border turns `rose-500/80` with alert badge and hover/focus tooltip displaying the exact error message.
+  - **Active Tab Ring:** Currently selected field displays an active accent ring (`ring-2 ring-emerald-500/50`).
 
-Enhance `Pill.tsx`:
+**Files to create/modify:** `src/components/PillBar/Pill.tsx`, `src/index.css`
 
-- **Animated transitions (BRD §3.2):** When the token value changes, the old value fades out and the new value slides in. Use CSS `transition` / `@keyframes` only — no animation libraries.
-- **Change diff flash (BRD §3.3):** On value change, the pill briefly pulses with an accent-colored glow (e.g., `box-shadow` animation over ~400ms).
-- **Validation state (BRD §3.5):** If the field has a validation error, the pill border turns amber/red. Wrap the pill in a `<Tooltip>` showing the error message.
-
-**Dependencies:** Task 5.1, Task 1.1 (validation), Task 3.3
-
-**Files to create/modify:** `src/components/PillBar/Pill.tsx`, `src/index.css` (keyframes)
-
-**Acceptance criteria:** Changing a pill value shows a smooth fade/slide transition and a brief glow. Invalid field `80` in minute pill turns pill red with tooltip `"Minute must be 0–59"`.
+**Acceptance criteria:**
+- Value change triggers smooth CSS transition.
+- Field errors render red border + accessible tooltip.
 
 ---
 
-### Task 5.3: Implement raw input field
+### Task 5.3: Controlled Raw Input Field
 
 **Scope:**
-
 In `src/components/PillBar/RawInput.tsx`:
-
-- A text input below the pill bar showing the full raw cron expression.
-- Editing the raw input calls `setExpression()` to sync all GUI controls bidirectionally (BRD §3.6).
-- Must not cause cursor jumps during editing — use controlled input with careful cursor position preservation.
-- A clipboard copy button next to the input.
-
-**Dependencies:** Task 2.1, Task 3.2
+- Input bar styled like a modern IDE command line (`font-mono text-base bg-zinc-950`).
+- Prefix: Terminal icon or `cron >` prompt.
+- Suffix: Quick copy button + syntax validation indicator (Green checkmark for valid, Amber/Red exclamation icon for errors).
+- Cursor Management: Uses controlled buffer pattern (`rawInput` state) so typing does not reset the caret to the end of the input.
+- Real-time synchronization with GUI controls.
 
 **Files to create/modify:** `src/components/PillBar/RawInput.tsx`
 
-**Acceptance criteria:** Typing `*/5 * * * *` in the raw input updates all pills, summary, timeline, and URL hash. No cursor jumps during typing. Copy button works with toast.
+**Acceptance criteria:**
+- Typing valid cron expression syncs pills immediately without cursor jumps.
+- Typing invalid characters shows validation badge and tooltip without crashing.
 
 ---
 
-### Task 5.4: Implement human-readable summary display
+### Task 5.4: Live Human-Readable Summary Banner
 
 **Scope:**
-
 In `src/components/PillBar/Summary.tsx`:
-
-- Display the `humanReadable` string from `useCronState` below the raw input.
-- Style as a secondary text line.
-- Shows nothing or a placeholder when the expression is invalid.
-
-**Dependencies:** Task 1.2, Task 2.1
+- Displays real-time `cronstrue` interpretation.
+- Visual styling: subtle card with Sparkles icon and clear, human-friendly typography (e.g., `"Every 15 minutes, between 09:00 AM and 05:59 PM, Monday through Friday"`).
+- Copy button for copying the human-readable explanation directly.
+- Handles invalid state with clear error message.
 
 **Files to create/modify:** `src/components/PillBar/Summary.tsx`
 
-**Acceptance criteria:** Summary updates instantly on any expression change. Shows correct human-readable text for all presets.
+**Acceptance criteria:** Immediately updates on any expression change; copies text to clipboard on click.
 
 ---
 
-## Phase 6 — Builder Panel (Visual Field Editors)
+## Phase 6 — Interactive Visual Field Builders
 
-### Task 6.1: Implement Builder Panel container with tabs
+### Task 6.1: Builder Panel Container with Synchronized Tabs
 
 **Scope:**
-
 In `src/components/BuilderPanel/BuilderPanel.tsx`:
+- Uses the `Tabs` primitive with 5 tabs: Minute, Hour, Day of Month, Month, Day of Week.
+- Active tab is two-way synced with the Pill Bar (clicking a pill switches tab; switching tab highlights pill).
+- Card container with smooth panel transitions.
 
-- Use the `Tabs` component (Task 3.4) with 5 tabs: Minute, Hour, Day of Month, Month, Day of Week.
-- Active tab is driven by pill click (Task 5.1) or direct tab click.
-- Each tab renders the corresponding field editor component.
+**Files to create/modify:** `src/components/BuilderPanel/BuilderPanel.tsx`
 
-**Dependencies:** Task 3.4, Task 5.1
-
-**Files to create/modify:** `src/components/BuilderPanel/BuilderPanel.tsx`, `src/components/BuilderPanel/index.ts`
-
-**Acceptance criteria:** Clicking pill or tab switches the active editor. Active tab is visually highlighted.
+**Acceptance criteria:** Switching tabs switches active field editor; active pill stays in sync.
 
 ---
 
-### Task 6.2: Implement Minute field editor
+### Task 6.2: Minute Field Editor (0–59)
 
 **Scope:**
-
 In `src/components/BuilderPanel/MinuteEditor.tsx`:
-
-Three modes (radio selection):
-
-1. **Every minute (`*`)** — single radio option.
-2. **Interval (`*/N` or `X/N`)** — two number inputs: "Every [N] minutes starting at minute [X]".
-3. **Specific minutes** — a 10×6 multi-select grid (values 0–59). Clicking a cell toggles it.
-
-Changing any control calls `setField('minute', newState)`.
-
-**Dependencies:** Task 2.1
+- Three modes (Radio options):
+  1. **Every Minute (`*`)**: Fires every minute.
+  2. **Interval (`*/N` or `X/N`)**: "Every [N] minutes starting at minute [X]" with number steppers / inputs.
+  3. **Specific Minutes**:
+     - 10×6 interactive button grid (values 00 to 59).
+     - Multi-select toggle buttons.
+     - Quick Preset Bar: `[All]` `[Even (*/2)]` `[Odd]` `[Every 5m (*/5)]` `[Every 15m (*/15)]` `[Clear]`.
+- All selections automatically format and collapse into minimal cron syntax (e.g. `0,15,30,45` or `0-30/5`).
 
 **Files to create/modify:** `src/components/BuilderPanel/MinuteEditor.tsx`
 
-**Acceptance criteria:** Selecting "Every 15 minutes" produces token `*/15`. Selecting specific minutes 0, 15, 30, 45 produces `0,15,30,45`. Grid cells visually toggle.
+**Acceptance criteria:** Selecting "Every 5m" selects 0, 5, 10, ...; toggling cells updates token and raw input.
 
 ---
 
-### Task 6.3: Implement Hour field editor
+### Task 6.3: Hour Field Editor (0–23)
 
 **Scope:**
-
 In `src/components/BuilderPanel/HourEditor.tsx`:
-
-Three modes:
-
-1. **Every hour (`*`)**.
-2. **Interval (`*/N` or `X/N`)** — "Every [N] hours starting at hour [X]".
-3. **Specific hours** — 24-cell picker with AM/PM labels (12 AM, 1 AM, …, 11 PM). Multi-select.
-
-**Dependencies:** Task 2.1
+- Three modes:
+  1. **Every Hour (`*`)**.
+  2. **Interval (`*/N` or `X/N`)**: "Every [N] hours starting at hour [X]".
+  3. **Specific Hours**:
+     - 24-cell grid (0 to 23).
+     - Explicit 12-hour AM/PM subtitle labels (e.g., `00` `12 AM`, `09` `9 AM`, `13` `1 PM`).
+     - Quick Preset Bar: `[Work Hours (9–17)]` `[Morning (6–11)]` `[Afternoon (12–17)]` `[Night (18–23)]` `[Clear]`.
 
 **Files to create/modify:** `src/components/BuilderPanel/HourEditor.tsx`
 
-**Acceptance criteria:** Selecting hours 9–17 produces `9-17`. AM/PM labels display correctly.
+**Acceptance criteria:** Clicking "Work Hours (9–17)" generates token `9-17`; AM/PM indicators display correctly.
 
 ---
 
-### Task 6.4: Implement Day of Month field editor
+### Task 6.4: Day of Month Field Editor (1–31)
 
 **Scope:**
-
 In `src/components/BuilderPanel/DayOfMonthEditor.tsx`:
-
-Three modes:
-
-1. **Every day (`*`)**.
-2. **Interval (`X/N`)** — "Every [N] days starting on day [X]".
-3. **Specific days** — 31-cell calendar-style grid (values 1–31). Multi-select.
-
-**Dependencies:** Task 2.1
+- Three modes:
+  1. **Every Day (`*`)**.
+  2. **Interval (`X/N`)**: "Every [N] days starting on day [X]".
+  3. **Specific Days**:
+     - 31-cell calendar layout (days 1 through 31).
+     - Quick Preset Bar: `[First of Month (1)]` `[Mid-Month (15)]` `[Last Day (31)]` `[Every 2 Days]` `[Clear]`.
 
 **Files to create/modify:** `src/components/BuilderPanel/DayOfMonthEditor.tsx`
 
-**Acceptance criteria:** Selecting day 1 produces `1`. Selecting days 1 and 15 produces `1,15`.
+**Acceptance criteria:** Clicking day 1 and 15 sets token `1,15`.
 
 ---
 
-### Task 6.5: Implement Month field editor
+### Task 6.5: Month Field Editor (1–12)
 
 **Scope:**
-
 In `src/components/BuilderPanel/MonthEditor.tsx`:
-
-Two modes (no interval mode per BRD §4.2):
-
-1. **Every month (`*`)**.
-2. **Specific months** — 12 toggle pills labeled Jan–Dec. Multi-select.
-
-**Dependencies:** Task 2.1
+- Two modes (per BRD §4.2):
+  1. **Every Month (`*`)**.
+  2. **Specific Months**:
+     - 12 toggle pills labeled Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec.
+     - Quick Preset Bar: `[Q1 (Jan–Mar)]` `[Q2 (Apr–Jun)]` `[Q3 (Jul–Sep)]` `[Q4 (Oct–Dec)]` `[All]` `[Clear]`.
 
 **Files to create/modify:** `src/components/BuilderPanel/MonthEditor.tsx`
 
-**Acceptance criteria:** Selecting Jan, Apr, Jul, Oct produces `1,4,7,10`.
+**Acceptance criteria:** Selecting Q1 sets token `1-3` (or `1,2,3`); quick actions toggle state cleanly.
 
 ---
 
-### Task 6.6: Implement Day of Week field editor
+### Task 6.6: Day of Week Field Editor (0–6)
 
 **Scope:**
-
 In `src/components/BuilderPanel/DayOfWeekEditor.tsx`:
-
-Three modes:
-
-1. **Every day (`*`)**.
-2. **Interval** — "Every [N] days starting [day name]".
-3. **Specific days** — 7 checkboxes (Sun–Sat) + quick-select buttons: `[Weekdays]` (Mon–Fri), `[Weekends]` (Sat–Sun), `[Clear]`.
-
-**Dependencies:** Task 2.1
+- Three modes:
+  1. **Every Day (`*`)**.
+  2. **Interval**: "Every [N] days starting [Day]".
+  3. **Specific Days**:
+     - 7 checkbox buttons: Sun (0), Mon (1), Tue (2), Wed (3), Thu (4), Fri (5), Sat (6).
+     - Quick Preset Bar: `[Weekdays (Mon–Fri)]` `[Weekends (Sat–Sun)]` `[All]` `[Clear]`.
 
 **Files to create/modify:** `src/components/BuilderPanel/DayOfWeekEditor.tsx`
 
-**Acceptance criteria:** Clicking `[Weekdays]` produces `1-5`. Clicking `[Weekends]` produces `0,6`. Toggling individual days works.
+**Acceptance criteria:** Selecting "Weekdays" sets token `1-5`; selecting "Weekends" sets `0,6`.
 
 ---
 
-## Phase 7 — Visual Timeline & Forecast
+## Phase 7 — Visual Timeline (24h × 7d Heatmap) & Execution Forecast
 
-### Task 7.1: Implement 24h × 7d heatmap timeline
+### Task 7.1: Interactive 24h × 7d Heatmap Grid
 
 **Scope:**
-
 In `src/components/Timeline/Timeline.tsx`:
+- Renders a 7-row × 24-column CSS grid (zero external charting libraries per BRD §4.4).
+- Row labels: Mon, Tue, Wed, Thu, Fri, Sat, Sun.
+- Column header: 24 hourly marks (`00`, `01`, ..., `23`).
+- Visual states:
+  - Inactive cells: `bg-zinc-800/40 border border-zinc-800/60`.
+  - Active cells: Accent background (`bg-emerald-500` or `bg-cyan-500` with varying brightness based on `runCounts`).
+- Hover Tooltips:
+  - Hovering any cell displays a popover tooltip: e.g. `"Wednesday at 14:00 — 4 runs (every 15m)"` or `"Sunday at 03:00 — 1 run"`.
+- Schedule Summary Tag: Displays total execution count per week (e.g. `"120 runs per week"`).
 
-- Render a 7-row × 24-column `<div>` grid.
-- Rows labeled Mon–Sun (left side). Columns labeled 00–23 (top).
-- Each cell's active/inactive state is driven by `computeHeatmap()` (Task 1.4).
-- Active cells use the accent color; inactive cells are dimmed/low-opacity.
-- **No charting libraries** — pure HTML/CSS grid (BRD §4.4).
-- Recalculates on every expression change.
+**Files to create/modify:** `src/components/Timeline/Timeline.tsx`, `src/components/Timeline/HeatmapCell.tsx`
 
-**Dependencies:** Task 1.4, Task 2.1
-
-**Files to create/modify:** `src/components/Timeline/Timeline.tsx`, `src/components/Timeline/index.ts`
-
-**Acceptance criteria:** For `0 9 * * 1` (9 AM on Mondays), only the Monday/09 cell is highlighted (BRD §6.6). Grid is responsive.
+**Acceptance criteria:**
+- For `0 9 * * 1`, only Monday 09:00 cell illuminates.
+- Hovering reveals detailed execution count tooltip.
 
 ---
 
-### Task 7.2: Implement Execution Forecast panel
+### Task 7.2: Execution Forecast Panel
 
 **Scope:**
-
 In `src/components/Forecast/Forecast.tsx`:
+- Displays the next 5 execution timestamps using `getNextRuns()` (Task 1.4).
+- Controls:
+  - Timezone Toggle: `(●) Local [Timezone Name]` / `(○) UTC`. Switching updates forecast timestamps in place.
+- Rows:
+  - Index number (1 to 5).
+  - Absolute formatted timestamp (`YYYY-MM-DD HH:mm:ss`).
+  - Relative static countdown badge (e.g. `"in 12m"`, `"in 1h 45m"`, `"tomorrow"`).
+- Copy All: Button to copy all 5 upcoming run timestamps to clipboard.
 
-- Display the next 5 execution timestamps using `getNextRuns()` (Task 1.3).
-- Each row shows: formatted date/time + relative label (e.g., `"in 42 min"`).
-- Timezone toggle: `(●) Local [detected TZ]` / `(○) UTC`. Switching recomputes the forecast.
-- Static relative labels — computed once per expression change, not live-ticking (BRD §4.5).
+**Files to create/modify:** `src/components/Forecast/Forecast.tsx`
 
-**Dependencies:** Task 1.3, Task 2.1
-
-**Files to create/modify:** `src/components/Forecast/Forecast.tsx`, `src/components/Forecast/index.ts`
-
-**Acceptance criteria:** Shows 5 timestamps. Switching to UTC recalculates. Invalid expression shows empty or error state.
+**Acceptance criteria:**
+- Shows 5 accurate upcoming execution times.
+- Timezone toggle recalculates without refreshing.
 
 ---
 
 ## Phase 8 — Developer & AI Export Snippets
 
-### Task 8.1: Implement Export Panel with tabbed code blocks
+### Task 8.1: Developer & AI Export Panel
 
 **Scope:**
+In `src/components/ExportPanel/ExportPanel.tsx` and `src/components/ExportPanel/snippets.ts`:
+- Tabbed card containing 4 export formats (BRD §4.6):
+  1. **Linux Crontab:** `*/15 09-17 * * 1-5 /path/to/script.sh`
+  2. **GitHub Actions:**
+     ```yaml
+     on:
+       schedule:
+         - cron: '*/15 09-17 * * 1-5'
+     ```
+  3. **Kubernetes CronJob:**
+     ```yaml
+     apiVersion: batch/v1
+     kind: CronJob
+     metadata:
+       name: scheduled-job
+     spec:
+       schedule: "*/15 09-17 * * 1-5"
+     ```
+  4. **AI Prompt Context (Cursor / Claude / Copilot / ChatGPT):**
+     ```text
+     Implement a background task in [language/framework] running on this schedule:
+     - Cron Expression: `*/15 09-17 * * 1-5`
+     - Description: Every 15 minutes, between 09:00 AM and 05:59 PM, Monday through Friday
+     - Timezone: Asia/Riyadh (Next run: 2026-09-02 09:00:00)
+     Requirements: Ensure idempotency, timezone safety, and proper graceful shutdown handling.
+     ```
+- Card Features:
+  - Language / Syntax badge (`bash`, `yaml`, `prompt`).
+  - Individual "Copy Snippet" button with 2s checkmark state and "Copied!" toast.
 
-In `src/components/ExportPanel/ExportPanel.tsx`:
+**Files to create/modify:** `src/components/ExportPanel/ExportPanel.tsx`, `src/components/ExportPanel/snippets.ts`
 
-- Use `Tabs` component with 4 tabs: **crontab**, **GitHub Actions**, **Kubernetes CronJob**, **AI Prompt**.
-- Each tab renders a syntax-highlighted code block using a `<pre><code>` element.
-- No syntax highlighting library — use Tailwind text colors for minimal keyword highlighting, or render plain monospaced text.
-- Each tab has a **Copy Snippet** button that copies the content and shows a toast.
-
-Template strings for each tab (interpolate the active expression + human summary + timezone + next run):
-
-1. **Linux crontab:** `<expression> /path/to/script.sh`
-2. **GitHub Actions:** YAML `on.schedule` block.
-3. **Kubernetes CronJob:** YAML `CronJob` manifest.
-4. **AI Prompt:** Structured text block with expression, description, timezone, next run, and requirements (BRD §4.6).
-
-**Dependencies:** Task 2.1, Task 1.2, Task 1.3, Task 3.4, Task 3.2
-
-**Files to create/modify:** `src/components/ExportPanel/ExportPanel.tsx`, `src/components/ExportPanel/snippets.ts`, `src/components/ExportPanel/index.ts`
-
-**Acceptance criteria:** All 4 tabs accurately reflect the active expression (BRD §6.5). Copy buttons trigger clipboard + toast.
+**Acceptance criteria:**
+- Snippets accurately interpolate active expression and timezone.
+- Copy button triggers clipboard write and toast.
 
 ---
 
-### Task 8.2: Implement Share URL button
+### Task 8.2: Stateless Share URL Generator
 
 **Scope:**
-
-In `src/components/ExportPanel/ShareButton.tsx` (or inline in `ExportPanel`):
-
-- "Share URL" button that copies the full URL (origin + hash) to the clipboard.
-- Shows a toast: `"Link copied!"`.
-
-**Dependencies:** Task 2.2, Task 3.2
+In `src/components/ExportPanel/ShareButton.tsx`:
+- "Share URL" action button with Share2 icon.
+- Copies full absolute URL with hash (e.g. `https://cronbuild.com/#*/15_09-17_*_*_1-5`).
+- Shows confirmation toast: `"Shareable URL copied to clipboard!"`.
 
 **Files to create/modify:** `src/components/ExportPanel/ShareButton.tsx`
 
-**Acceptance criteria:** Copied URL is `https://cronbuild.com/#*/15_09-17_*_*_1-5` (or `localhost` equivalent). Pasting in a new tab restores state.
+**Acceptance criteria:** Navigating to copied link restores expression in fresh browser tab.
 
 ---
 
-## Phase 9 — Recent Expressions Bar
+## Phase 9 — Recent Expressions History Bar
 
-### Task 9.1: Implement Recent Expressions component
+### Task 9.1: Recent Expressions Chip Bar
 
 **Scope:**
-
 In `src/components/RecentExpressions/RecentExpressions.tsx`:
+- Bottom dock showing the `RECENT:` prefix and horizontal scrollable list of recent expression chips.
+- Each chip displays the mono cron string with tooltip showing human-readable description.
+- Clicking a chip restores the expression immediately.
+- "Clear History" button to reset stored history.
 
-- Render clickable chips for each expression in `recentExpressions` (from Task 2.3).
-- Clicking a chip calls `setExpression()` to restore it.
-- Displayed at the bottom of the page (per BRD layout).
-- Label: `RECENT:` prefix.
+**Files to create/modify:** `src/components/RecentExpressions/RecentExpressions.tsx`
 
-**Dependencies:** Task 2.3, Task 2.1
-
-**Files to create/modify:** `src/components/RecentExpressions/RecentExpressions.tsx`, `src/components/RecentExpressions/index.ts`
-
-**Acceptance criteria:** Shows up to 10 recent expressions. Clicking one restores the full state. List persists across reloads.
+**Acceptance criteria:** Shows up to 10 stored expressions; clicking restores state; persists across reloads.
 
 ---
 
-## Phase 10 — Page Composition & Layout
+## Phase 10 — Full Workspace Composition & Global Shortcuts
 
-### Task 10.1: Compose the full-page layout in App.tsx
+### Task 10.1: Compose Single-Screen Workspace Layout
 
 **Scope:**
-
 In `src/App.tsx`:
-
-- Wire all components together in a single-screen layout matching the BRD wireframe (§2).
-- Layout structure (top to bottom):
-  1. `<Header>` (logo, presets, theme toggle)
-  2. `<PillBar>` (pills + raw input + summary)
-  3. `<BuilderPanel>` (tabbed field editors)
-  4. Side-by-side: `<Timeline>` (left) + `<ExportPanel>` (right) — stack vertically on mobile.
-  5. `<Forecast>` (below or beside timeline)
-  6. `<RecentExpressions>` (bottom bar)
-- Wrap everything in a `<ToastProvider>`.
-- Pass `useCronState` as props or context to all children.
-- Responsive: Tailwind breakpoints for mobile/tablet/desktop. Everything stacks on small screens.
-
-**Dependencies:** All Phase 3–9 tasks
+- Single-screen responsive workspace without page reloads (BRD §2 wireframe):
+  - Top: `<Header />`
+  - Hero Section: `<PillBar />` + `<RawInput />` + `<Summary />`
+  - Center: `<BuilderPanel />`
+  - Bottom-Split: `<Timeline />` (left) and `<ExportPanel />` (right)
+  - Sub-section: `<Forecast />`
+  - Footer: `<RecentExpressions />`
+- Wrap app with `<ToastProvider>`.
+- Responsive layout: On desktop (≥1024px), timeline and export panels sit side-by-side. On mobile (<1024px), panels stack with touch-friendly spacing.
 
 **Files to create/modify:** `src/App.tsx`, `src/main.tsx`
 
-**Acceptance criteria:** All components render in the correct layout. Full bi-directional sync works end-to-end (BRD §6.1). Responsive layout works on mobile (≥375px) and desktop.
+**Acceptance criteria:**
+- Single unified workspace loads cleanly.
+- Bi-directional sync works seamlessly across all sections.
 
 ---
 
-### Task 10.2: Implement keyboard shortcuts
+### Task 10.2: Global Keyboard Shortcuts Hook
 
 **Scope:**
+In `src/hooks/useKeyboardShortcuts.ts`:
+- Register global listeners:
+  - `Cmd+K` / `Ctrl+K`: Toggle Command Palette.
+  - `Esc`: Close open modals/tooltips.
+  - `?`: Toggle keyboard shortcuts cheatsheet modal.
 
-In `src/hooks/useKeyboardShortcuts.ts` (or inline in `App.tsx`):
+**Files to create/modify:** `src/hooks/useKeyboardShortcuts.ts`, `src/components/ui/ShortcutsModal.tsx`
 
-- `Cmd+K` / `Ctrl+K` — open/close preset dropdown.
-- Ensure no conflicts with browser defaults.
-
-**Dependencies:** Task 4.2
-
-**Files to create/modify:** `src/hooks/useKeyboardShortcuts.ts`
-
-**Acceptance criteria:** `Cmd+K` opens the preset dropdown from anywhere on the page.
+**Acceptance criteria:** Pressing `?` shows shortcuts modal; `Cmd+K` opens presets.
 
 ---
 
-## Phase 11 — Static Assets & AI Ecosystem
+## Phase 11 — Static Assets, SEO & AI Agent Ecosystem (`llms.txt`)
 
-### Task 11.1: Create `llms.txt` for AI agent deep-linking
+### Task 11.1: Static `public/llms.txt` Spec for AI Coding Agents
 
 **Scope:**
-
 In `public/llms.txt`:
-
-- Create a static text file per the `llms.txt` specification (BRD §4.8).
-- Document CronBuild's purpose, URL schema (`https://cronbuild.com/#<minute>_<hour>_<dom>_<month>_<dow>`), field formats, and usage examples.
-- Include example deep-links for common schedules.
+- Author formal `llms.txt` compliant document per LLMs.txt specification (BRD §4.8):
+  - Purpose of CronBuild.com.
+  - URL hash deep-link schema: `https://cronbuild.com/#<minute>_<hour>_<dom>_<month>_<dow>`.
+  - Allowed characters, field ranges, and operator syntax (`*`, `,`, `-`, `/`).
+  - Example deep links for AI agents to embed when answering cron questions (e.g. `https://cronbuild.com/#0_9_*_*_1-5`).
 
 **Files to create:** `public/llms.txt`
 
-**Acceptance criteria:** `GET /llms.txt` returns valid content. Describes the URL schema accurately (BRD §6.7).
+**Acceptance criteria:** `GET /llms.txt` returns plaintext specification with accurate schema.
 
 ---
 
-### Task 11.2: Configure `index.html` meta tags and favicon
+### Task 11.2: Metadata, OpenGraph & Favicon Assets
 
 **Scope:**
+In `index.html` and `public/`:
+- Document title: `CronBuild — Visual Cron Expression Builder & Generator`.
+- SEO description: `Fast, client-side visual cron expression builder, 24h timeline heatmap, and AI export generator.`
+- OpenGraph & Twitter Card tags (`og:title`, `og:description`, `og:image`, `og:url`).
+- Custom SVG favicon with dark/light mode adaptive color.
 
-In `index.html`:
+**Files to create/modify:** `index.html`, `public/favicon.svg`
 
-- Set `<title>CronBuild — Visual Cron Expression Builder</title>`.
-- Add `<meta name="description">` for SEO.
-- Add Open Graph tags (`og:title`, `og:description`, `og:url`, `og:image`).
-- Add a simple favicon (can use an emoji favicon or a minimal SVG).
-- Set viewport meta for mobile responsiveness.
-
-**Files to create/modify:** `index.html`, `public/favicon.svg` (or `.ico`)
-
-**Acceptance criteria:** Page has correct title, meta description, and favicon in browser tab.
+**Acceptance criteria:** Social preview tags and favicon load correctly.
 
 ---
 
-## Phase 12 — Polish, Accessibility & Deployment
+## Phase 12 — Production Hardening, Accessibility & Cloudflare Deployment
 
-### Task 12.1: Accessibility pass
+### Task 12.1: WCAG 2.1 AA Accessibility Audit & Live Region Announcements
 
 **Scope:**
+- Verify color contrast ratios for dark mode (minimum 4.5:1 for standard text).
+- Add `aria-live="polite"` region for screen readers announcing expression changes.
+- Ensure all interactive buttons, checkboxes, and tabs have visible focus rings (`focus-visible:ring-2 focus-visible:ring-emerald-500`).
+- Ensure all icon-only buttons have descriptive `aria-label` attributes.
 
-Across all components:
+**Files to modify:** Component files across `src/components/`.
 
-- Ensure semantic HTML: `<header>`, `<main>`, `<section>`, `<nav>`, `<button>`, `<label>`.
-- All interactive elements are keyboard-focusable and operable via Enter/Space.
-- Add `aria-label`, `aria-describedby`, `role` attributes where needed (tabs, tooltips, toasts).
-- Tab order follows visual layout.
-- Color contrast meets minimum readability standards in both dark and light modes.
-
-**Files to modify:** All component files.
-
-**Acceptance criteria:** Full keyboard navigation works (Tab through pills → builder → timeline → exports → recents). Screen reader announces pill labels and values.
+**Acceptance criteria:** 100% keyboard navigable without mouse; screen readers announce schedule changes.
 
 ---
 
-### Task 12.2: Responsive design refinements
+### Task 12.2: Comprehensive End-to-End Integration Tests
 
 **Scope:**
+In `src/test/integration.test.tsx`:
+- Write integration tests using React Testing Library:
+  - Selecting a preset loads pills, updates summary, and renders timeline cells.
+  - Modifying the raw input synchronizes builder tabs.
+  - Copying snippet triggers clipboard write and shows toast.
+  - URL hash round-trip restores state accurately.
 
-- Test and fix layout at breakpoints: 375px (mobile), 768px (tablet), 1024px+ (desktop).
-- Timeline + Export panel stack vertically below `md` breakpoint.
-- Pill bar wraps on narrow screens.
-- Builder panel grid adapts (e.g., minute grid becomes scrollable or wraps).
-- Preset dropdown is full-width modal on mobile.
+**Files to create:** `src/test/integration.test.tsx`
 
-**Files to modify:** Component files, `src/index.css`
-
-**Acceptance criteria:** No horizontal overflow on any screen width ≥ 375px. All features remain usable on mobile.
+**Acceptance criteria:** Integration test suite passes cleanly via `npm run test`.
 
 ---
 
-### Task 12.3: Configure Cloudflare Pages deployment
+### Task 12.3: Cloudflare Pages Deployment Configuration
 
 **Scope:**
+- Create `public/_headers` with production security headers:
+  ```http
+  /*
+    X-Content-Type-Options: nosniff
+    X-Frame-Options: DENY
+    X-XSS-Protection: 1; mode=block
+    Referrer-Policy: strict-origin-when-cross-origin
+    Permissions-Policy: camera=(), microphone=(), geolocation=()
+    Content-Security-Policy: default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; connect-src 'self';
+  /assets/*
+    Cache-Control: public, max-age=31536000, immutable
+  ```
+- Create `public/_redirects`:
+  ```text
+  /*    /index.html   200
+  ```
+- Verify static build output with `npm run build`.
 
-- Add a `wrangler.toml` or Cloudflare Pages config if needed, or rely on default Vite build output.
-- Ensure `npm run build` produces a `dist/` directory with `index.html` and all static assets.
-- Add SPA redirect rule: all routes → `index.html` (for hash-based routing this is implicit, but confirm).
-- Add `public/_headers` file to set appropriate cache headers and security headers (`X-Content-Type-Options`, `X-Frame-Options`, etc.).
-- Add `public/_redirects` if needed.
+**Files to create/modify:** `public/_headers`, `public/_redirects`, `package.json`
 
-**Files to create/modify:** `public/_headers`, `public/_redirects` (if needed)
-
-**Acceptance criteria:** `npm run build` succeeds. `dist/` contains `index.html`, `llms.txt`, all JS/CSS assets. Deploying to Cloudflare Pages works.
+**Acceptance criteria:** `npm run build` succeeds; output in `dist/` contains all assets, headers, and `llms.txt`.
 
 ---
 
@@ -793,36 +843,39 @@ Across all components:
 
 ```mermaid
 graph TD
-    T0.1[0.1 Vite Init] --> T0.2[0.2 Tailwind]
+    T0.1[0.1 Vite Init] --> T0.2[0.2 Tailwind v4]
     T0.1 --> T0.3[0.3 Dependencies]
-    T0.2 --> T0.4[0.4 Project Structure]
-    T0.3 --> T0.4
+    T0.1 --> T0.4[0.4 Vitest Setup]
+    T0.2 --> T0.5[0.5 Types & Hierarchy]
+    T0.3 --> T0.5
+    T0.4 --> T0.5
 
-    T0.4 --> T1.1[1.1 Cron Serializer]
-    T0.4 --> T1.2[1.2 Human Readable]
-    T0.4 --> T1.3[1.3 Next Runs]
-    T0.4 --> T1.4[1.4 Heatmap Calc]
+    T0.5 --> T1.1[1.1 Cron Syntax Engine]
+    T1.1 --> T1.2[1.2 Engine Unit Tests]
+    T1.1 --> T1.3[1.3 Human Readable]
+    T1.1 --> T1.4[1.4 Next-Runs Forecast]
+    T1.1 --> T1.5[1.5 Heatmap Calc]
 
-    T1.1 --> T2.1[2.1 useCronState]
-    T1.2 --> T2.1
+    T1.1 --> T2.1[2.1 useCronState Hook]
+    T1.3 --> T2.1
     T2.1 --> T2.2[2.2 URL Hash Sync]
-    T2.1 --> T2.3[2.3 localStorage + Recent]
+    T2.1 --> T2.3[2.3 localStorage & History]
 
-    T0.4 --> T3.1[3.1 Theme Toggle]
-    T0.4 --> T3.2[3.2 Toast]
-    T0.4 --> T3.3[3.3 Tooltip]
-    T0.4 --> T3.4[3.4 Tabs]
+    T0.5 --> T3.1[3.1 Theme Switcher]
+    T0.5 --> T3.2[3.2 Toast System]
+    T0.5 --> T3.3[3.3 Tooltip Primitive]
+    T0.5 --> T3.4[3.4 Tab Navigation]
 
-    T3.1 --> T4.1[4.1 Header]
-    T2.1 --> T4.2[4.2 Preset Dropdown]
+    T3.1 --> T4.1[4.1 Header Component]
+    T2.1 --> T4.2[4.2 Command Palette Modal]
     T4.1 --> T4.2
 
-    T2.1 --> T5.1[5.1 PillBar]
+    T2.1 --> T5.1[5.1 PillBar Container]
     T3.2 --> T5.1
-    T5.1 --> T5.2[5.2 Pill Animations]
+    T5.1 --> T5.2[5.2 Animated Pill]
     T3.3 --> T5.2
-    T2.1 --> T5.3[5.3 Raw Input]
-    T2.1 --> T5.4[5.4 Summary]
+    T2.1 --> T5.3[5.3 Controlled Raw Input]
+    T2.1 --> T5.4[5.4 Summary Banner]
 
     T3.4 --> T6.1[6.1 Builder Container]
     T5.1 --> T6.1
@@ -832,9 +885,9 @@ graph TD
     T2.1 --> T6.5[6.5 Month Editor]
     T2.1 --> T6.6[6.6 DOW Editor]
 
-    T1.4 --> T7.1[7.1 Heatmap Timeline]
+    T1.5 --> T7.1[7.1 24h Heatmap Grid]
     T2.1 --> T7.1
-    T1.3 --> T7.2[7.2 Forecast Panel]
+    T1.4 --> T7.2[7.2 Forecast Panel]
     T2.1 --> T7.2
 
     T2.1 --> T8.1[8.1 Export Panel]
@@ -842,9 +895,9 @@ graph TD
     T3.2 --> T8.1
     T2.2 --> T8.2[8.2 Share Button]
 
-    T2.3 --> T9.1[9.1 Recent Expressions]
+    T2.3 --> T9.1[9.1 Recent Chips]
 
-    T4.2 --> T10.1[10.1 Full Layout]
+    T4.2 --> T10.1[10.1 Workspace Layout]
     T5.2 --> T10.1
     T6.1 --> T10.1
     T7.1 --> T10.1
@@ -852,14 +905,14 @@ graph TD
     T8.1 --> T10.1
     T8.2 --> T10.1
     T9.1 --> T10.1
-    T4.2 --> T10.2[10.2 Keyboard Shortcuts]
+    T10.1 --> T10.2[10.2 Global Shortcuts]
 
-    T10.1 --> T11.1[11.1 llms.txt]
-    T10.1 --> T11.2[11.2 Meta Tags]
+    T10.1 --> T11.1[11.1 llms.txt Spec]
+    T10.1 --> T11.2[11.2 Metadata & Favicon]
 
-    T10.1 --> T12.1[12.1 Accessibility]
-    T10.1 --> T12.2[12.2 Responsive Polish]
-    T12.1 --> T12.3[12.3 CF Pages Deploy]
+    T10.1 --> T12.1[12.1 WCAG 2.1 AA Audit]
+    T1.2 --> T12.2[12.2 Integration Tests]
+    T12.1 --> T12.3[12.3 Cloudflare Pages Config]
     T12.2 --> T12.3
     T11.1 --> T12.3
     T11.2 --> T12.3
@@ -867,22 +920,22 @@ graph TD
 
 ---
 
-## Summary
+## Phase Summary Table
 
-| Phase | Tasks | Description |
-|:------|:------|:------------|
-| **0** | 0.1 – 0.4 | Project scaffolding, tooling, structure |
-| **1** | 1.1 – 1.4 | Core cron engine (serialize, validate, forecast, heatmap) |
-| **2** | 2.1 – 2.3 | State management, URL hash sync, localStorage |
-| **3** | 3.1 – 3.4 | Shared UI primitives (theme, toast, tooltip, tabs) |
-| **4** | 4.1 – 4.2 | Header & preset dropdown |
-| **5** | 5.1 – 5.4 | Tokenized pill bar, raw input, summary |
-| **6** | 6.1 – 6.6 | Builder panel (5 field editors) |
-| **7** | 7.1 – 7.2 | Visual timeline heatmap & execution forecast |
-| **8** | 8.1 – 8.2 | Developer/AI export snippets & share URL |
-| **9** | 9.1 | Recent expressions bar |
-| **10** | 10.1 – 10.2 | Full page composition & keyboard shortcuts |
-| **11** | 11.1 – 11.2 | Static assets (llms.txt, meta tags) |
-| **12** | 12.1 – 12.3 | Accessibility, responsive polish, deployment |
+| Phase | Tasks | Objective |
+| :--- | :--- | :--- |
+| **0** | 0.1 – 0.5 | Vite 6, React 19, TypeScript strict, Tailwind v4 design tokens, Vitest setup, domain types |
+| **1** | 1.1 – 1.5 | Cron syntax engine, 100% unit tests, human summary, forecast, 24×7 heatmap calculation |
+| **2** | 2.1 – 2.3 | `useCronState` with buffered input draft, URL hash sync, localStorage history |
+| **3** | 3.1 – 3.4 | Theme switcher, accessible toast system, tooltip primitive, tab navigation |
+| **4** | 4.1 – 4.2 | Header branding and Raycast-style `Cmd+K` command palette preset modal |
+| **5** | 5.1 – 5.4 | Tokenized pill bar, animated pill component with glow, controlled raw input, summary banner |
+| **6** | 6.1 – 6.6 | Builder tabs: Minute, Hour, DOM, Month, DOW with quick action utility bars |
+| **7** | 7.1 – 7.2 | 24h × 7d heatmap grid with hover popovers, next 5 execution forecast with TZ toggle |
+| **8** | 8.1 – 8.2 | Developer export snippet cards (Crontab, GH Actions, K8s, AI Prompt) & shareable URL |
+| **9** | 9.1 | Recent expressions chip dock with quick-load and clear |
+| **10** | 10.1 – 10.2 | Single-screen layout composition, responsive adaptation, global keyboard shortcuts |
+| **11** | 11.1 – 11.2 | AI ecosystem `public/llms.txt` deep-link specification, SEO & social preview metadata |
+| **12** | 12.1 – 12.3 | WCAG 2.1 AA accessibility audit, full integration test suite, Cloudflare Pages headers |
 
-**Total: 35 tasks across 13 phases**
+**Total: 40 granular tasks across 13 phases**
