@@ -2,7 +2,7 @@
 
 > Derived from [CronBuild_BRD_v1.0.md](./CronBuild_BRD_v1.0.md)
 >
-> **Stack:** React 19+ (Vite 6), TypeScript 5.7+ (Strict), Tailwind CSS v4, Lucide Icons
+> **Stack:** React 19+ (Vite 8.2), TypeScript (Strict), Tailwind CSS v4, Lucide Icons
 > **Libraries:** `cronstrue`, `cron-parser`
 > **Testing:** Vitest, React Testing Library, jsdom
 > **Hosting:** Cloudflare Pages (100% Client-Side Static SPA, Zero Backend, Privacy-First)
