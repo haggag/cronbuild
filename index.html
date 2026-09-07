@@ -1,12 +1,36 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>cronbuild.com</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="canonical" href="https://cronbuild.com/" />
+    <meta
+      name="description"
+      content="Build, understand, and share cron schedules. Visual field pickers, timezone-aware previews, and developer exports, computed entirely in your browser."
+    />
+    <meta
+      property="og:title"
+      content="CronBuild — Visual cron expression builder"
+    />
+    <meta
+      property="og:description"
+      content="Build, preview, and share five-field cron schedules. Private, fast, and entirely client-side."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://cronbuild.com/" />
+    <meta name="theme-color" content="#0d1117" />
+    <title>CronBuild — Visual cron expression builder</title>
+    <script src="/theme-init.js"></script>
   </head>
   <body>
+    <noscript
+      >CronBuild is a visual cron expression builder. Interactive editing and
+      schedule previews require JavaScript, and all computations run in your
+      browser. Read the <a href="/cronbuild-guide.md">cron syntax guide</a> or
+      <a href="/llms.txt">AI integration documentation</a> without
+      JavaScript.</noscript
+    >
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

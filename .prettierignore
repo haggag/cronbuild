@@ -1,0 +1,7 @@
+node_modules
+dist
+package-lock.json
+docs/CronBuild_BRD_v1.0.md
+docs/CronBuild_Implementation_Plan.md
+playwright-report
+test-results

@@ -1,0 +1,39 @@
+name: Verify static application
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run test:unit
+      - run: npm run build
+      - run: npm exec playwright install --with-deps chromium firefox webkit
+      - run: npm run test:e2e
+      - run: npm run audit:performance
+      - run: npm audit
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: verification-results
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cronbuild-static
+          path: dist/
+          retention-days: 14

@@ -1,0 +1,22 @@
+# CronBuild
+
+> A private, browser-based visual builder and preview for five-field numeric cron expressions with steps. Preview links never execute jobs.
+
+CronBuild runs all application logic locally, with no accounts, analytics, API keys, or application backend.
+
+## Preview links
+
+Use `https://cronbuild.com/#<minute>_<hour>_<dom>_<month>_<dow>`.
+Encode each token once with `encodeURIComponent`, join with underscores, then prefix `#`. Ordinary cron punctuation also works unescaped. Tokens retain their authored spelling. Only the expression is shared: recipients interpret it using their own Local/UTC preference and current clock.
+
+Bounds: minute 0–59, hour 0–23, day of month 1–31, month 1–12, weekday 0–6 (Sunday=0). Supported operators: `*`, `,`, ascending `-` ranges, and positive `/` steps. Six/seven fields, macros, names, Sunday 7, and Quartz extensions are unsupported.
+
+## Examples
+
+- [Weekdays at 02:00](https://cronbuild.com/#0_2_*_*_1-5)
+- [Every 15 minutes during weekday business hours](https://cronbuild.com/#*%2F15_09-17_*_*_1-5)
+- [Leap day at midnight](https://cronbuild.com/#0_0_29_2_*)
+
+## Documentation
+
+- [CronBuild guide](https://cronbuild.com/cronbuild-guide.md): grammar, day-field OR semantics, timezone behavior, exports, and limitations.
